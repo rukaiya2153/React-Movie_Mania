@@ -1,0 +1,4 @@
+Username: admin
+Email: admin@gmail.com
+Password: admin123
+Password (again): admin123
