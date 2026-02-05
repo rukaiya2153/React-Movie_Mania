@@ -35,6 +35,9 @@ from shows.views import ShowAdminViewSet, EpisodeAdminViewSet
 from payments.views import PaymentAdminViewSet
 from reports.views import admin_dashboard
 
+# For Frontend
+from django.views.generic import TemplateView
+
 
 # Router
 router = DefaultRouter()
@@ -58,4 +61,8 @@ urlpatterns = [
 
     # Admin Dashboard Stats
     path('api/admin/dashboard/', admin_dashboard, name='admin-dashboard'),
+
+    path("",TemplateView.as_view(template_name="login.html")),  #for login.html
+    path("api/", include("accounts.urls")),  # for otp
+
 ]

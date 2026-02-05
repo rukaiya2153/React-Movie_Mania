@@ -1,0 +1,199 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Login | Movie Mania</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body {
+      background: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)),
+                  url("{% static 'images/login-bg.jpg' %}") center/cover no-repeat;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      color: #fff;
+    }
+
+    .login-card {
+      background-color: #111;
+      width: 380px;
+      padding: 35px;
+      border-radius: 10px;
+      box-shadow: 0 0 25px rgba(229,9,20,0.6);
+    }
+
+    .login-card img {
+      width: 160px;
+      display: block;
+      margin: 0 auto 25px;
+    }
+
+    .form-control {
+      background-color: #222;
+      border: none;
+      color: #fff;
+    }
+
+    .form-control::placeholder {
+      color: #aaa;
+    }
+
+    .form-control:focus {
+      background-color: #222;
+      color: #fff;
+      box-shadow: none;
+      border: 1px solid #e50914;
+    }
+
+    .btn-red {
+      background-color: #e50914;
+      border: none;
+      font-weight: bold;
+    }
+
+    .btn-red:hover {
+      background-color: #f40612;
+    }
+
+    .link {
+      color: #aaa;
+      font-size: 14px;
+      cursor: pointer;
+      text-align: center;
+      margin-top: 12px;
+    }
+
+    .link:hover {
+      color: #e50914;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="login-card">
+
+  <!--  LOGO -->
+  <img src="{% static 'images/logo.png' %}" alt="Movie Mania Logo">
+
+  <!--  LOGIN -->
+  <div id="loginBox">
+    <input id="username" class="form-control mb-3"
+           placeholder="Enter admin username">
+
+    <input id="password" type="password" class="form-control mb-3"
+           placeholder="Enter password">
+
+    <button class="btn btn-red w-100" onclick="login()">Sign In</button>
+
+    <div class="link" onclick="showForgot()">Forgot password?</div>
+  </div>
+
+  <!--  FORGOT PASSWORD -->
+  <div id="forgotBox" class="hidden">
+    <input id="fp_identifier" class="form-control mb-3"
+           placeholder="Enter registered email or phone number">
+
+    <button class="btn btn-red w-100" onclick="sendOTP()">Send OTP</button>
+
+    <div class="link" onclick="backToLogin()">Back to login</div>
+  </div>
+
+  <!-- OTP RESET -->
+  <div id="otpBox" class="hidden">
+    <input id="otp" class="form-control mb-3"
+           placeholder="Enter 6-digit OTP">
+
+    <input id="new_password" type="password" class="form-control mb-3"
+           placeholder="Enter new password">
+
+    <button class="btn btn-red w-100" onclick="resetPassword()">Reset Password</button>
+  </div>
+
+</div>
+
+<script>
+  const API = "http://127.0.0.1:8000/api";
+
+  function showForgot() {
+    loginBox.classList.add("hidden");
+    forgotBox.classList.remove("hidden");
+  }
+
+  function backToLogin() {
+    forgotBox.classList.add("hidden");
+    otpBox.classList.add("hidden");
+    loginBox.classList.remove("hidden");
+  }
+
+  async function login() {
+    const res = await fetch(API + "/token/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: username.value,
+        password: password.value
+      })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      localStorage.setItem("adminToken", data.access);
+      window.location.href = "/dashboard/";
+    } else {
+      alert("Invalid username or password");
+    }
+  }
+
+  async function sendOTP() {
+    const res = await fetch(API + "/send-otp/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        identifier: fp_identifier.value
+      })
+    });
+
+    if (res.ok) {
+      forgotBox.classList.add("hidden");
+      otpBox.classList.remove("hidden");
+      alert("OTP sent successfully");
+    } else {
+      alert("Admin not found");
+    }
+  }
+
+  async function resetPassword() {
+    const res = await fetch(API + "/reset-password/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        identifier: fp_identifier.value,
+        otp: otp.value,
+        new_password: new_password.value
+      })
+    });
+
+    if (res.ok) {
+      alert("Password reset successful");
+      backToLogin();
+    } else {
+      alert("Invalid OTP");
+    }
+  }
+</script>
+
+</body>
+</html>
