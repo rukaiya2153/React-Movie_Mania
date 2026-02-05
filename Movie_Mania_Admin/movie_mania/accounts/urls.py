@@ -1,7 +1,9 @@
 from django.urls import path
-from .views import send_otp, reset_password
+from .views import login_view, send_otp, reset_password, dashboard_data
 
 urlpatterns = [
-    path("send-otp/", send_otp),
-    path("reset-password/", reset_password),
+    path("login/", login_view, name="login"),
+    path("send-otp/", send_otp, name="send-otp"),
+    path("reset-password/", reset_password, name="reset-password"),
+    path("dashboard-data/", dashboard_data, name="dashboard-data"),  # JWT protected
 ]

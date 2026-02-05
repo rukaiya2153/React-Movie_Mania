@@ -12,7 +12,7 @@
   <style>
     body {
       background: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)),
-                  url("{% static 'images/login-bg.jpg' %}") center/cover no-repeat;
+                  url("{% static 'images/logo.png' %}") center/cover no-repeat;
       height: 100vh;
       display: flex;
       justify-content: center;
@@ -84,47 +84,50 @@
 
 <div class="login-card">
 
-  <!--  LOGO -->
+  <!-- LOGO -->
   <img src="{% static 'images/logo.png' %}" alt="Movie Mania Logo">
 
-  <!--  LOGIN -->
+  <!-- LOGIN -->
   <div id="loginBox">
-    <input id="username" class="form-control mb-3"
-           placeholder="Enter admin username">
+    <input id="username" class="form-control mb-3" placeholder="Enter admin username">
+    <input id="password" type="password" class="form-control mb-3" placeholder="Enter password">
+    <input id="phone" class="form-control mb-3" placeholder="Enter your phone number">
 
-    <input id="password" type="password" class="form-control mb-3"
-           placeholder="Enter password">
-
-    <button class="btn btn-red w-100" onclick="login()">Sign In</button>
-
+    <button type="button" class="btn btn-red w-100" onclick="login()">Sign In</button>
     <div class="link" onclick="showForgot()">Forgot password?</div>
   </div>
 
-  <!--  FORGOT PASSWORD -->
+  <!-- FORGOT PASSWORD -->
   <div id="forgotBox" class="hidden">
-    <input id="fp_identifier" class="form-control mb-3"
-           placeholder="Enter registered email or phone number">
-
-    <button class="btn btn-red w-100" onclick="sendOTP()">Send OTP</button>
-
+    <input id="fp_identifier" class="form-control mb-3" placeholder="Enter registered email or phone number">
+    <button type="button" class="btn btn-red w-100" onclick="sendOTP()">Send OTP</button>
     <div class="link" onclick="backToLogin()">Back to login</div>
   </div>
 
   <!-- OTP RESET -->
   <div id="otpBox" class="hidden">
-    <input id="otp" class="form-control mb-3"
-           placeholder="Enter 6-digit OTP">
-
-    <input id="new_password" type="password" class="form-control mb-3"
-           placeholder="Enter new password">
-
-    <button class="btn btn-red w-100" onclick="resetPassword()">Reset Password</button>
+    <input id="otp" class="form-control mb-3" placeholder="Enter 6-digit OTP">
+    <input id="new_password" type="password" class="form-control mb-3" placeholder="Enter new password">
+    <button type="button" class="btn btn-red w-100" onclick="resetPassword()">Reset Password</button>
   </div>
 
 </div>
 
 <script>
   const API = "http://127.0.0.1:8000/api";
+
+  // INPUT ELEMENTS
+  const username = document.getElementById("username");
+  const password = document.getElementById("password");
+  const phone = document.getElementById("phone");
+  const fp_identifier = document.getElementById("fp_identifier");
+  const otp = document.getElementById("otp");
+  const new_password = document.getElementById("new_password");
+
+  // BOXES
+  const loginBox = document.getElementById("loginBox");
+  const forgotBox = document.getElementById("forgotBox");
+  const otpBox = document.getElementById("otpBox");
 
   function showForgot() {
     loginBox.classList.add("hidden");
@@ -137,26 +140,35 @@
     loginBox.classList.remove("hidden");
   }
 
+  // ---------------- LOGIN ----------------
   async function login() {
-    const res = await fetch(API + "/token/", {
+    const res = await fetch(API + "/login/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         username: username.value,
-        password: password.value
+        password: password.value,
+        phone: phone.value
       })
     });
 
     const data = await res.json();
 
     if (res.ok) {
+      // Save JWT in localStorage
       localStorage.setItem("adminToken", data.access);
+
+      // Optional: save refresh token if needed
+      localStorage.setItem("refreshToken", data.refresh);
+
+      // Redirect to dashboard
       window.location.href = "/dashboard/";
     } else {
-      alert("Invalid username or password");
+      alert(data.error);
     }
   }
 
+  // ---------------- SEND OTP ----------------
   async function sendOTP() {
     const res = await fetch(API + "/send-otp/", {
       method: "POST",
@@ -175,6 +187,7 @@
     }
   }
 
+  // ---------------- RESET PASSWORD ----------------
   async function resetPassword() {
     const res = await fetch(API + "/reset-password/", {
       method: "POST",
@@ -193,7 +206,32 @@
       alert("Invalid OTP");
     }
   }
-</script>
 
-</body>
-</html>
+  // ---------------- PROTECTED FETCH EXAMPLE ----------------
+  async function fetchDashboardData() {
+    const token = localStorage.getItem("adminToken");
+    if (!token) {
+      alert("Please login first!");
+      window.location.href = "/login/";
+      return;
+    }
+
+    const res = await fetch(API + "/dashboard-data/", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token  // ✅ include JWT here
+      }
+    });
+
+    if (res.status === 401) {
+      alert("Session expired or unauthorized. Please login again.");
+      window.location.href = "/login/";
+      return;
+    }
+
+    const data = await res.json();
+    console.log("Dashboard data:", data);
+    // Render your dashboard here...
+  }
+</script>
