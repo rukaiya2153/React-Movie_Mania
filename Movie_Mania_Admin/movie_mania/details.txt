@@ -1,4 +1,17 @@
 Username: admin
 Email: admin@gmail.com
 Password: admin123
-Password (again): admin123
+Password (again): admin123  / movie_mania
+
+
+
+Username : admin123
+email : diyagajjar1220@gmail.com
+Password : movie_mania  / admin@12345
+
+
+
+
+final 
+username: admin123
+password: Admin@123

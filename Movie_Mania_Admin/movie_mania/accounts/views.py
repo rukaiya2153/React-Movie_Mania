@@ -1,46 +1,69 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils import timezone
-from django.db.models import Sum
+from django.db.models import Sum, Q
 import random
 
-from accounts.models import User, OTP, LoginAttempt
+from .models import User, OTP, LoginAttempt
 from movies.models import Movie
-from shows.models import Show           # Correct import from shows app
+from shows.models import Show
 from payments.models import Payment
 
 
-# ---------------- LOGIN ----------------
+# ---------------- LOGIN API ----------------
 @api_view(["POST"])
+@permission_classes([AllowAny])   # 🔥 VERY IMPORTANT FIX
 def login_view(request):
-    username = request.data.get("username")
+    identifier = request.data.get("username")  # username or phone
     password = request.data.get("password")
-    phone = request.data.get("phone")
+    phone = request.data.get("phone")  # optional
 
-    if not username or not password:
-        return Response({"error": "Username and password required"}, status=400)
+    if not identifier or not password:
+        return Response(
+            {"error": "Username/phone and password required"},
+            status=400
+        )
 
-    user = authenticate(username=username, password=password)
+    # Find user by username OR phone
+    user_obj = User.objects.filter(
+        Q(username=identifier) | Q(phone=identifier)
+    ).first()
+
+    if not user_obj:
+        return Response({"error": "Invalid credentials"}, status=401)
+
+    # Authenticate using username (required by Django)
+    user = authenticate(
+        username=user_obj.username,
+        password=password
+    )
+
     if not user:
-        return Response({"error": "Invalid credentials"}, status=400)
+        return Response({"error": "Invalid credentials"}, status=401)
 
-    # Save/update phone number and last login
+    # Admin-only login
+    if user.role != "admin":
+        return Response({"error": "Admin access only"}, status=403)
+
+    # Optional phone update
     if phone:
         user.phone = phone
+
     user.last_login = timezone.now()
     user.save()
 
-    # Log the login attempt
+    # Log login
     LoginAttempt.objects.create(
         user=user,
         phone=phone
     )
 
-    # Return JWT tokens
+    # JWT tokens
     refresh = RefreshToken.for_user(user)
+
     return Response({
         "refresh": str(refresh),
         "access": str(refresh.access_token),
@@ -50,15 +73,16 @@ def login_view(request):
 
 # ---------------- SEND OTP ----------------
 @api_view(["POST"])
+@permission_classes([AllowAny])
 def send_otp(request):
     identifier = request.data.get("identifier")
+
     if not identifier:
         return Response({"error": "Email or phone required"}, status=400)
 
-    user = None
     if "@" in identifier:
         user = User.objects.filter(email=identifier, role="admin").first()
-    elif identifier.isdigit():
+    else:
         user = User.objects.filter(phone=identifier, role="admin").first()
 
     if not user:
@@ -66,48 +90,56 @@ def send_otp(request):
 
     otp_code = str(random.randint(100000, 999999))
     OTP.objects.create(user=user, otp=otp_code)
-    print("OTP:", otp_code)  # Replace with real SMS/email in production
+
+    print("OTP (DEV ONLY):", otp_code)
+
     return Response({"message": "OTP sent"})
 
 
 # ---------------- RESET PASSWORD ----------------
 @api_view(["POST"])
+@permission_classes([AllowAny])
 def reset_password(request):
     identifier = request.data.get("identifier")
-    otp = request.data.get("otp")
+    otp_val = request.data.get("otp")
     new_password = request.data.get("new_password")
 
-    user = None
+    if not identifier or not otp_val or not new_password:
+        return Response({"error": "All fields required"}, status=400)
+
     if "@" in identifier:
         user = User.objects.filter(email=identifier, role="admin").first()
-    elif identifier.isdigit():
+    else:
         user = User.objects.filter(phone=identifier, role="admin").first()
 
     if not user:
         return Response({"error": "Admin not found"}, status=404)
 
-    otp_obj = OTP.objects.filter(user=user, otp=otp).first()
+    otp_obj = OTP.objects.filter(user=user, otp=otp_val).first()
     if not otp_obj:
         return Response({"error": "Invalid OTP"}, status=400)
 
     user.set_password(new_password)
     user.save()
     otp_obj.delete()
+
     return Response({"message": "Password reset successful"})
 
 
-# ---------------- DASHBOARD DATA ----------------
+# ---------------- DASHBOARD API ----------------
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def dashboard_data(request):
     admin = request.user
+
     total_movies = Movie.objects.count()
     total_shows = Show.objects.count()
     total_users = User.objects.filter(role="user").count()
-    total_revenue = Payment.objects.aggregate(total=Sum('amount'))['total'] or 0
+    total_revenue = Payment.objects.aggregate(
+        total=Sum("amount")
+    )["total"] or 0
 
-    # Latest 5 uploads
-    recent_uploads = Movie.objects.order_by('-created_at')[:5]
+    recent_uploads = Movie.objects.order_by("-created_at")[:5]
     recent_list = [
         {"title": m.title, "views": getattr(m, "views", 0)}
         for m in recent_uploads

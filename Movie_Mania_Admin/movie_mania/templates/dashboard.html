@@ -1,202 +1,36 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Admin Dashboard | Movie Mania</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "base.html" %}
+{% block content %}
 
-  <!-- Bootstrap -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<h1>Dashboard</h1>
 
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <style>
-    body {
-      background-color: #111;
-      color: #fff;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
-    }
-
-    .sidebar {
-      background-color: #111;
-      width: 220px;
-      height: 100vh;
-      position: fixed;
-      padding: 20px 0;
-    }
-
-    .sidebar a {
-      display: block;
-      padding: 12px 20px;
-      color: #aaa;
-      text-decoration: none;
-      margin-bottom: 5px;
-    }
-
-    .sidebar a:hover {
-      background-color: #e50914;
-      color: #fff;
-      border-radius: 5px;
-    }
-
-    .main {
-      margin-left: 240px;
-      padding: 30px;
-    }
-
-    .card {
-      background-color: #222;
-      border: none;
-      color: #fff;
-      margin-bottom: 20px;
-    }
-
-    .card h5 {
-      color: #e50914;
-    }
-
-    .header {
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-
-    .header span {
-      margin-right: 20px;
-      font-weight: bold;
-    }
-
-    .btn-logout {
-      background-color: #e50914;
-      border: none;
-      color: #fff;
-      font-weight: bold;
-    }
-
-    .btn-logout:hover {
-      background-color: #f40612;
-    }
-  </style>
-</head>
-
-<body>
-
-<div class="sidebar">
-  <a href="#">Dashboard</a>
-  <a href="#">Movies</a>
-  <a href="#">TV Shows</a>
-  <a href="#">Genres</a>
-  <a href="#">Users</a>
-  <a href="#">Wishlist</a>
-  <a href="#">Payments</a>
-  <a href="#">Reports</a>
-  <a href="#" onclick="logout()">Logout</a>
+<div class="stats">
+    <div class="card">Total Movies <span id="movies"></span></div>
+    <div class="card">Total Shows <span id="shows"></span></div>
+    <div class="card">Total Users <span id="users"></span></div>
+    <div class="card">Total Revenue <span id="revenue"></span></div>
 </div>
 
-<div class="main">
-  <div class="header">
-    <span id="adminName">Admin</span>
-    <button class="btn btn-logout" onclick="logout()">Logout</button>
-  </div>
-
-  <div class="row">
-    <div class="col-md-3">
-      <div class="card p-3">
-        <h5>Total Movies</h5>
-        <h3 id="totalMovies">0</h3>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card p-3">
-        <h5>Total Shows</h5>
-        <h3 id="totalShows">0</h3>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card p-3">
-        <h5>Total Users</h5>
-        <h3 id="totalUsers">0</h3>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card p-3">
-        <h5>Total Revenue</h5>
-        <h3 id="totalRevenue">$0</h3>
-      </div>
-    </div>
-  </div>
-
-  <div class="card mt-4 p-3">
-    <canvas id="recentUploadsChart"></canvas>
-  </div>
-</div>
+<h3>Recent Uploads</h3>
+<table>
+<thead>
+<tr><th>Title</th><th>Views</th></tr>
+</thead>
+<tbody id="recent"></tbody>
+</table>
 
 <script>
-  const API = "http://127.0.0.1:8000/api";
-  const token = localStorage.getItem("adminToken");
+authFetch("/api/dashboard/").then(data => {
+    document.getElementById("movies").innerText = data.total_movies;
+    document.getElementById("shows").innerText = data.total_shows;
+    document.getElementById("users").innerText = data.total_users;
+    document.getElementById("revenue").innerText = "₹" + data.total_revenue;
 
-  if (!token) {
-    alert("Please login first!");
-    window.location.href = "/login/";
-  }
-
-  async function fetchDashboard() {
-    const res = await fetch(API + "/dashboard-data/", {
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + token
-      }
+    let html = "";
+    data.recent_uploads.forEach(m => {
+        html += `<tr><td>${m.title}</td><td>${m.views}</td></tr>`;
     });
-
-    if (res.status === 401) {
-      alert("Session expired! Please login again.");
-      window.location.href = "/login/";
-      return;
-    }
-
-    const data = await res.json();
-
-    // Update dashboard stats
-    document.getElementById("totalMovies").innerText = data.total_movies;
-    document.getElementById("totalShows").innerText = data.total_shows;
-    document.getElementById("totalUsers").innerText = data.total_users;
-    document.getElementById("totalRevenue").innerText = "$" + data.total_revenue;
-    document.getElementById("adminName").innerText = data.admin_name;
-
-    // Chart: Recent Uploads
-    const ctx = document.getElementById("recentUploadsChart").getContext("2d");
-    new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: data.recent_uploads.map(item => item.title),
-        datasets: [{
-          label: 'Recent Uploads',
-          data: data.recent_uploads.map(item => item.views),
-          backgroundColor: '#e50914'
-        }]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          y: { beginAtZero: true, ticks: { color: "#fff" } },
-          x: { ticks: { color: "#fff" } }
-        },
-        plugins: { legend: { labels: { color: "#fff" } } }
-      }
-    });
-  }
-
-  function logout() {
-    localStorage.removeItem("adminToken");
-    localStorage.removeItem("refreshToken");
-    window.location.href = "/login/";
-  }
-
-  fetchDashboard();
+    document.getElementById("recent").innerHTML = html;
+});
 </script>
 
-</body>
-</html>
+{% endblock %}

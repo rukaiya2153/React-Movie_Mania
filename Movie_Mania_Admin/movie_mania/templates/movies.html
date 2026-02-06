@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Movies</h1>
+<button>Add New Movie</button>
+
+<table>
+<thead>
+<tr>
+<th>Title</th><th>Genre</th><th>Year</th><th>Actions</th>
+</tr>
+</thead>
+<tbody id="movies-table"></tbody>
+</table>
+
+<script>
+authFetch("/api/movies/").then(data => {
+    let html = "";
+    data.forEach(m => {
+        html += `
+        <tr>
+            <td>${m.title}</td>
+            <td>${m.genre}</td>
+            <td>${m.release_year}</td>
+            <td>
+                <button>Edit</button>
+                <button>Delete</button>
+            </td>
+        </tr>`;
+    });
+    document.getElementById("movies-table").innerHTML = html;
+});
+</script>
+
+{% endblock %}

@@ -1,153 +1,201 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Movie Mania Admin</title>
+  <title>Admin Dashboard | Movie Mania</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     body {
-      margin: 0;
-      background-color: #141414;
-      color: #ffffff;
-      font-family: 'Helvetica Neue', sans-serif;
+      background-color: #111;
+      color: #fff;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
     }
 
-    /*HEADER*/
-    .topbar {
-      height: 60px;
-      background-color: #1c1c1c;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 20px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.6);
-    }
-
-    .topbar img {
-      height: 38px;
-      filter: drop-shadow(0 0 6px rgba(229,9,20,0.9));
-    }
-
-    .admin-name {
-      color: #e50914;
-      font-weight: bold;
-      font-size: 15px;
-    }
-
-    /*SIDEBAR*/
     .sidebar {
-      width: 240px;
-      background-color: #1c1c1c;
+      background-color: #111;
+      width: 220px;
+      height: 100vh;
       position: fixed;
-      top: 60px;
-      bottom: 0;
-      padding-top: 15px;
-      overflow-y: auto;
+      padding: 20px 0;
     }
 
     .sidebar a {
       display: block;
-      padding: 12px 22px;
-      color: #cccccc;
+      padding: 12px 20px;
+      color: #aaa;
       text-decoration: none;
-      font-weight: 500;
-      font-size: 15px;
-      transition: 0.3s;
+      margin-bottom: 5px;
     }
 
-    .sidebar a:hover,
-    .sidebar a.active {
+    .sidebar a:hover {
       background-color: #e50914;
-      color: #ffffff;
+      color: #fff;
+      border-radius: 5px;
     }
 
-    .sidebar .logout {
-      position: absolute;
-      bottom: 10px;
-      width: 100%;
-      background-color: #111;
-      color: #ff4d4d;
+    .main {
+      margin-left: 240px;
+      padding: 30px;
+    }
+
+    .card {
+      background-color: #222;
+      border: none;
+      color: #fff;
+      margin-bottom: 20px;
+    }
+
+    .card h5 {
+      color: #e50914;
+    }
+
+    .header {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .header span {
+      margin-right: 20px;
       font-weight: bold;
     }
 
-    /*CONTENT*/
-    .content {
-      margin-left: 240px;
-      margin-top: 60px;
-      padding: 25px;
+    .btn-logout {
+      background-color: #e50914;
+      border: none;
+      color: #fff;
+      font-weight: bold;
+    }
+
+    .btn-logout:hover {
+      background-color: #f40612;
     }
   </style>
 </head>
 
 <body>
 
-<!--  HEADER -->
-<div class="topbar">
-  <img src="assets/logo.png" alt="Movie Mania Logo">
-
-  <span class="admin-name" id="adminUsername">Admin</span>
-</div>
-
-<!--  SIDEBAR -->
 <div class="sidebar">
-  <a href="dashboard.html"> Dashboard</a>
-  <a href="movies.html"> Movies</a>
-  <a href="tvshows.html"> TV Shows</a>
-  <a href="genres.html"> Genres</a>
-  <a href="users.html">Users</a>
-  <a href="wishlist.html"> Wishlist</a>
-  <a href="payments.html"> Payments</a>
-  <a href="reports.html">Reports</a>
-
-  <a href="#" class="logout" onclick="logout()">🚪 Logout</a>
+  <a href="#">Dashboard</a>
+  <a href="#">Movies</a>
+  <a href="#">TV Shows</a>
+  <a href="#">Genres</a>
+  <a href="#">Users</a>
+  <a href="#">Wishlist</a>
+  <a href="#">Payments</a>
+  <a href="#">Reports</a>
+  <a href="#" onclick="logout()">Logout</a>
 </div>
 
-<!--  PAGE CONTENT -->
-<div class="content" id="content">
-  <!-- Dynamic page content -->
+<div class="main">
+  <div class="header">
+    <span id="adminName">Admin</span>
+    <button class="btn btn-logout" onclick="logout()">Logout</button>
+  </div>
+
+  <div class="row">
+    <div class="col-md-3">
+      <div class="card p-3">
+        <h5>Total Movies</h5>
+        <h3 id="totalMovies">0</h3>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card p-3">
+        <h5>Total Shows</h5>
+        <h3 id="totalShows">0</h3>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card p-3">
+        <h5>Total Users</h5>
+        <h3 id="totalUsers">0</h3>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card p-3">
+        <h5>Total Revenue</h5>
+        <h3 id="totalRevenue">$0</h3>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-4 p-3">
+    <canvas id="recentUploadsChart"></canvas>
+  </div>
 </div>
 
 <script>
-  const API_BASE = "http://localhost:8000/api";
+  const API = "http://127.0.0.1:8000/api";
   const token = localStorage.getItem("adminToken");
 
-  //  Protect pages
-  if (!token && !window.location.pathname.includes("login")) {
-    window.location.href = "login.html";
+  if (!token) {
+    alert("Please login first!");
+    window.location.href = "/login/";
   }
 
-  //  Load admin username
-  async function loadAdmin() {
-    try {
-      const res = await fetch(API_BASE + "/me/", {
-        headers: { Authorization: "Bearer " + token }
-      });
-      if (res.ok) {
-        const user = await res.json();
-        document.getElementById("adminUsername").innerText = user.username;
+  async function fetchDashboard() {
+    const res = await fetch(API + "/dashboard-data/", {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
       }
-    } catch (e) {
-      console.error("Admin load failed");
-    }
-  }
+    });
 
-  loadAdmin();
+    if (res.status === 401) {
+      alert("Session expired! Please login again.");
+      window.location.href = "/login/";
+      return;
+    }
+
+    const data = await res.json();
+
+    // Update dashboard stats
+    document.getElementById("totalMovies").innerText = data.total_movies;
+    document.getElementById("totalShows").innerText = data.total_shows;
+    document.getElementById("totalUsers").innerText = data.total_users;
+    document.getElementById("totalRevenue").innerText = "₹" + data.total_revenue;
+    document.getElementById("adminName").innerText = data.admin_name;
+
+    // Chart: Recent Uploads
+    const ctx = document.getElementById("recentUploadsChart").getContext("2d");
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: data.recent_uploads.map(item => item.title),
+        datasets: [{
+          label: 'Recent Uploads',
+          data: data.recent_uploads.map(item => item.views),
+          backgroundColor: '#e50914'
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true, ticks: { color: "#fff" } },
+          x: { ticks: { color: "#fff" } }
+        },
+        plugins: { legend: { labels: { color: "#fff" } } }
+      }
+    });
+  }
 
   function logout() {
     localStorage.removeItem("adminToken");
-    window.location.href = "login.html";
+    localStorage.removeItem("refreshToken");
+    window.location.href = "/login/";
   }
 
-  //  Highlight active menu
-  document.querySelectorAll(".sidebar a").forEach(link => {
-    if (link.href === window.location.href) {
-      link.classList.add("active");
-    }
-  });
+  fetchDashboard();
 </script>
 
 </body>

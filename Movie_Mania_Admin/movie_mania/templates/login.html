@@ -5,8 +5,6 @@
   <meta charset="UTF-8">
   <title>Admin Login | Movie Mania</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
   <style>
@@ -17,221 +15,134 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
       color: #fff;
     }
-
     .login-card {
-      background-color: #111;
+      background: #111;
       width: 380px;
       padding: 35px;
       border-radius: 10px;
       box-shadow: 0 0 25px rgba(229,9,20,0.6);
     }
-
-    .login-card img {
-      width: 160px;
-      display: block;
-      margin: 0 auto 25px;
-    }
-
     .form-control {
-      background-color: #222;
+      background: #222;
       border: none;
       color: #fff;
     }
-
-    .form-control::placeholder {
-      color: #aaa;
-    }
-
-    .form-control:focus {
-      background-color: #222;
-      color: #fff;
-      box-shadow: none;
-      border: 1px solid #e50914;
-    }
-
     .btn-red {
-      background-color: #e50914;
-      border: none;
+      background: #e50914;
       font-weight: bold;
+      border: none;
     }
-
-    .btn-red:hover {
-      background-color: #f40612;
-    }
-
-    .link {
-      color: #aaa;
-      font-size: 14px;
-      cursor: pointer;
-      text-align: center;
-      margin-top: 12px;
-    }
-
-    .link:hover {
-      color: #e50914;
-    }
-
-    .hidden {
-      display: none;
-    }
+    .hidden { display: none; }
   </style>
 </head>
 
 <body>
 
 <div class="login-card">
-
-  <!-- LOGO -->
-  <img src="{% static 'images/logo.png' %}" alt="Movie Mania Logo">
+  <img src="{% static 'images/logo.png' %}" class="d-block mx-auto mb-4" width="160">
 
   <!-- LOGIN -->
   <div id="loginBox">
-    <input id="username" class="form-control mb-3" placeholder="Enter admin username">
-    <input id="password" type="password" class="form-control mb-3" placeholder="Enter password">
-    <input id="phone" class="form-control mb-3" placeholder="Enter your phone number">
-
-    <button type="button" class="btn btn-red w-100" onclick="login()">Sign In</button>
-    <div class="link" onclick="showForgot()">Forgot password?</div>
+    <input id="username" class="form-control mb-3" placeholder="Username or phone">
+    <input id="password" type="password" class="form-control mb-3" placeholder="Password">
+    <button class="btn btn-red w-100" onclick="login()">Sign In</button>
+    <div class="text-center mt-3">
+      <a onclick="showForgot()" style="cursor:pointer;color:#aaa;">Forgot password?</a>
+    </div>
   </div>
 
-  <!-- FORGOT PASSWORD -->
+  <!-- FORGOT -->
   <div id="forgotBox" class="hidden">
-    <input id="fp_identifier" class="form-control mb-3" placeholder="Enter registered email or phone number">
-    <button type="button" class="btn btn-red w-100" onclick="sendOTP()">Send OTP</button>
-    <div class="link" onclick="backToLogin()">Back to login</div>
+    <input id="fp_phone" class="form-control mb-3" placeholder="Registered phone number">
+    <button class="btn btn-red w-100" onclick="sendOTP()">Send OTP</button>
+    <div class="text-center mt-3">
+      <a onclick="backToLogin()" style="cursor:pointer;color:#aaa;">Back</a>
+    </div>
   </div>
 
-  <!-- OTP RESET -->
+  <!-- OTP -->
   <div id="otpBox" class="hidden">
-    <input id="otp" class="form-control mb-3" placeholder="Enter 6-digit OTP">
-    <input id="new_password" type="password" class="form-control mb-3" placeholder="Enter new password">
-    <button type="button" class="btn btn-red w-100" onclick="resetPassword()">Reset Password</button>
+    <input id="otp" class="form-control mb-3" placeholder="OTP">
+    <input id="new_password" type="password" class="form-control mb-3" placeholder="New password">
+    <button class="btn btn-red w-100" onclick="resetPassword()">Reset Password</button>
   </div>
-
 </div>
 
 <script>
-  const API = "http://127.0.0.1:8000/api";
+const API = "http://127.0.0.1:8000/api";
+const loginBox = document.getElementById("loginBox");
+const forgotBox = document.getElementById("forgotBox");
+const otpBox = document.getElementById("otpBox");
 
-  // INPUT ELEMENTS
-  const username = document.getElementById("username");
-  const password = document.getElementById("password");
-  const phone = document.getElementById("phone");
-  const fp_identifier = document.getElementById("fp_identifier");
-  const otp = document.getElementById("otp");
-  const new_password = document.getElementById("new_password");
+function showForgot() {
+  loginBox.classList.add("hidden");
+  forgotBox.classList.remove("hidden");
+}
 
-  // BOXES
-  const loginBox = document.getElementById("loginBox");
-  const forgotBox = document.getElementById("forgotBox");
-  const otpBox = document.getElementById("otpBox");
+function backToLogin() {
+  loginBox.classList.remove("hidden");
+  forgotBox.classList.add("hidden");
+  otpBox.classList.add("hidden");
+}
 
-  function showForgot() {
-    loginBox.classList.add("hidden");
-    forgotBox.classList.remove("hidden");
+async function login() {
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+
+  const res = await fetch(`${API}/login/`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    alert("Login failed");
+    return;
   }
 
-  function backToLogin() {
+  localStorage.setItem("adminToken", data.access);
+  window.location.href = "/dashboard/";
+}
+
+async function sendOTP() {
+  const phone = document.getElementById("fp_phone").value;
+  const res = await fetch(`${API}/send-otp/`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ identifier: phone })
+  });
+
+  if (res.ok) {
     forgotBox.classList.add("hidden");
-    otpBox.classList.add("hidden");
-    loginBox.classList.remove("hidden");
+    otpBox.classList.remove("hidden");
+    alert("OTP sent");
+  } else {
+    alert("Admin not found");
   }
+}
 
-  // ---------------- LOGIN ----------------
-  async function login() {
-    const res = await fetch(API + "/login/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: username.value,
-        password: password.value,
-        phone: phone.value
-      })
-    });
+async function resetPassword() {
+  const phone = document.getElementById("fp_phone").value;
+  const otp = document.getElementById("otp").value;
+  const new_password = document.getElementById("new_password").value;
 
-    const data = await res.json();
+  const res = await fetch(`${API}/reset-password/`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ identifier: phone, otp, new_password })
+  });
 
-    if (res.ok) {
-      // Save JWT in localStorage
-      localStorage.setItem("adminToken", data.access);
-
-      // Optional: save refresh token if needed
-      localStorage.setItem("refreshToken", data.refresh);
-
-      // Redirect to dashboard
-      window.location.href = "/dashboard/";
-    } else {
-      alert(data.error);
-    }
+  if (res.ok) {
+    alert("Password reset successful");
+    backToLogin();
+  } else {
+    alert("Invalid OTP");
   }
-
-  // ---------------- SEND OTP ----------------
-  async function sendOTP() {
-    const res = await fetch(API + "/send-otp/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        identifier: fp_identifier.value
-      })
-    });
-
-    if (res.ok) {
-      forgotBox.classList.add("hidden");
-      otpBox.classList.remove("hidden");
-      alert("OTP sent successfully");
-    } else {
-      alert("Admin not found");
-    }
-  }
-
-  // ---------------- RESET PASSWORD ----------------
-  async function resetPassword() {
-    const res = await fetch(API + "/reset-password/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        identifier: fp_identifier.value,
-        otp: otp.value,
-        new_password: new_password.value
-      })
-    });
-
-    if (res.ok) {
-      alert("Password reset successful");
-      backToLogin();
-    } else {
-      alert("Invalid OTP");
-    }
-  }
-
-  // ---------------- PROTECTED FETCH EXAMPLE ----------------
-  async function fetchDashboardData() {
-    const token = localStorage.getItem("adminToken");
-    if (!token) {
-      alert("Please login first!");
-      window.location.href = "/login/";
-      return;
-    }
-
-    const res = await fetch(API + "/dashboard-data/", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + token  // ✅ include JWT here
-      }
-    });
-
-    if (res.status === 401) {
-      alert("Session expired or unauthorized. Please login again.");
-      window.location.href = "/login/";
-      return;
-    }
-
-    const data = await res.json();
-    console.log("Dashboard data:", data);
-    // Render your dashboard here...
-  }
+}
 </script>
+
+</body>
+</html>
