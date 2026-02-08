@@ -1,6 +1,153 @@
 {% extends "base.html" %}
+{% block title %}Genres | Movie Mania{% endblock %}
 
 {% block content %}
-<h2>Genres</h2>
-<p>Genres admin page</p>
+<div class="d-flex justify-content-between mb-3">
+  <h3>Genres</h3>
+  <button class="btn btn-danger" onclick="openAddGenre()">+ Add Genre</button>
+</div>
+
+<div class="card p-3 table-responsive">
+  <table class="table table-dark table-hover align-middle">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="genresTable">
+      <tr><td colspan="3" class="text-center">Loading...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ADD GENRE MODAL -->
+<div class="modal fade" id="addGenreModal">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark text-white">
+      <div class="modal-header">
+        <h5>Add Genre</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addGenreForm">
+          <input class="form-control mb-2" id="genre_name" placeholder="Genre Name" required>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-danger" onclick="addGenre()">Add</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT GENRE MODAL -->
+<div class="modal fade" id="editGenreModal">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark text-white">
+      <div class="modal-header">
+        <h5>Edit Genre</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editGenreForm">
+          <input type="hidden" id="edit_genre_id">
+          <input class="form-control mb-2" id="edit_genre_name" placeholder="Genre Name" required>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-warning" onclick="updateGenre()">Update</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+const API = "http://127.0.0.1:8000/api/admin/genres/";
+const token = localStorage.getItem("adminToken");
+const genresTable = document.getElementById("genresTable");
+
+// Load genres
+async function loadGenres() {
+  try {
+    const res = await fetch(API, { headers: { Authorization: "Bearer " + token } });
+    const data = await res.json();
+    genresTable.innerHTML = data.length
+      ? data.map(g => `
+        <tr>
+          <td>${g.id}</td>
+          <td>${g.name}</td>
+          <td>
+            <button class="btn btn-sm btn-warning" onclick='openEditGenre(${JSON.stringify(g)})'>✏️</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteGenre(${g.id})">🗑</button>
+          </td>
+        </tr>
+      `).join("")
+      : `<tr><td colspan="3" class="text-center">No genres found</td></tr>`;
+  } catch (err) {
+    console.error(err);
+    genresTable.innerHTML = `<tr><td colspan="3" class="text-center text-danger">Failed to load genres</td></tr>`;
+  }
+}
+
+// Add Genre
+function openAddGenre() { new bootstrap.Modal(addGenreModal).show(); }
+
+async function addGenre() {
+  const payload = { name: genre_name.value };
+  const res = await fetch(API, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + token
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) return alert("Failed to add genre");
+  bootstrap.Modal.getInstance(addGenreModal).hide();
+  addGenreForm.reset();
+  loadGenres();
+}
+
+// Edit Genre
+function openEditGenre(g) {
+  edit_genre_id.value = g.id;
+  edit_genre_name.value = g.name;
+  new bootstrap.Modal(editGenreModal).show();
+}
+
+async function updateGenre() {
+  const payload = { name: edit_genre_name.value };
+  const res = await fetch(API + edit_genre_id.value + "/", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + token
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) return alert("Failed to update genre");
+  bootstrap.Modal.getInstance(editGenreModal).hide();
+  loadGenres();
+}
+
+// Delete Genre
+async function deleteGenre(id) {
+  if (!confirm("Delete this genre?")) return;
+  const res = await fetch(API + id + "/", {
+    method: "DELETE",
+    headers: { Authorization: "Bearer " + token }
+  });
+  if (!res.ok) return alert("Failed to delete genre");
+  loadGenres();
+}
+
+// Initial load
+loadGenres();
+</script>
 {% endblock %}

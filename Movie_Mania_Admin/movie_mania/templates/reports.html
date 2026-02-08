@@ -1,4 +1,198 @@
 {% extends "base.html" %}
+{% block title %}Reports | Movie Mania{% endblock %}
+
 {% block content %}
-<h2>Reports</h2>
+<h3 class="mb-3">Dashboard Reports</h3>
+
+<div class="row" id="summary-cards">
+  <!-- Summary cards populated by JS -->
+</div>
+
+<div class="row mt-4">
+  <div class="col-md-6">
+    <div class="card p-3">
+      <h5>Users by Role</h5>
+      <canvas id="usersChart" height="250"></canvas>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card p-3">
+      <h5>Payments by Status</h5>
+      <canvas id="paymentsChart" height="250"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-4">
+  <div class="col-md-6">
+    <div class="card p-3">
+      <h5>Content Overview</h5>
+      <canvas id="contentChart" height="250"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-4 p-3">
+  <h5>Recent Users</h5>
+  <table class="table table-dark table-hover mt-2">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Username</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Date Joined</th>
+      </tr>
+    </thead>
+    <tbody id="recentUsersTable">
+      <tr><td colspan="5" class="text-center">Loading...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card mt-4 p-3">
+  <h5>Recent Payments</h5>
+  <table class="table table-dark table-hover mt-2">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>User ID</th>
+        <th>Amount</th>
+        <th>Status</th>
+        <th>Payment Date</th>
+      </tr>
+    </thead>
+    <tbody id="recentPaymentsTable">
+      <tr><td colspan="5" class="text-center">Loading...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}
+
+{% block page_js %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+const token = localStorage.getItem("adminToken");
+
+async function loadReports() {
+  const [usersRes, paymentsRes, moviesRes, showsRes, genresRes] = await Promise.all([
+    fetch("http://127.0.0.1:8000/api/admin/users/", { headers: { Authorization: "Bearer " + token }}),
+    fetch("http://127.0.0.1:8000/api/admin/payments/", { headers: { Authorization: "Bearer " + token }}),
+    fetch("http://127.0.0.1:8000/api/admin/movies/", { headers: { Authorization: "Bearer " + token }}),
+    fetch("http://127.0.0.1:8000/api/admin/shows/", { headers: { Authorization: "Bearer " + token }}),
+    fetch("http://127.0.0.1:8000/api/admin/genres/", { headers: { Authorization: "Bearer " + token }})
+  ]);
+
+  const [users, payments, movies, shows, genres] = await Promise.all([
+    usersRes.json(), paymentsRes.json(), moviesRes.json(), showsRes.json(), genresRes.json()
+  ]);
+
+  // Summary cards
+  const totalUsers = users.length;
+  const totalPayments = payments.reduce((acc,p) => acc + parseFloat(p.amount),0).toFixed(2);
+  const completedPayments = payments.filter(p => p.payment_status === "Completed").length;
+  const pendingPayments = payments.filter(p => p.payment_status !== "Completed").length;
+
+  document.getElementById("summary-cards").innerHTML = `
+    <div class="col-md-3 mb-3">
+      <div class="card text-white bg-primary p-3">
+        <h6>Total Users</h6>
+        <h4>${totalUsers}</h4>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3">
+      <div class="card text-white bg-success p-3">
+        <h6>Total Payments</h6>
+        <h4>₹${totalPayments}</h4>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3">
+      <div class="card text-white bg-warning p-3">
+        <h6>Completed Payments</h6>
+        <h4>${completedPayments}</h4>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3">
+      <div class="card text-white bg-danger p-3">
+        <h6>Pending Payments</h6>
+        <h4>${pendingPayments}</h4>
+      </div>
+    </div>
+  `;
+
+  // Recent Users
+  const recentUsers = users.slice(0,5);
+  document.getElementById("recentUsersTable").innerHTML = recentUsers.length
+    ? recentUsers.map(u => `
+      <tr>
+        <td>${u.id}</td>
+        <td>${u.username}</td>
+        <td>${u.email}</td>
+        <td>${u.role}</td>
+        <td>${new Date(u.date_joined).toLocaleDateString()}</td>
+      </tr>
+    `).join("")
+    : `<tr><td colspan="5" class="text-center">No recent users</td></tr>`;
+
+  // Recent Payments
+  const recentPayments = payments.slice(0,5);
+  document.getElementById("recentPaymentsTable").innerHTML = recentPayments.length
+    ? recentPayments.map(p => `
+      <tr>
+        <td>${p.id}</td>
+        <td>${p.user_id}</td>
+        <td>₹${p.amount.toFixed(2)}</td>
+        <td>${p.payment_status}</td>
+        <td>${new Date(p.payment_date).toLocaleString()}</td>
+      </tr>
+    `).join("")
+    : `<tr><td colspan="5" class="text-center">No recent payments</td></tr>`;
+
+  // Chart: Users by Role
+  const roleCounts = users.reduce((acc,u)=> { acc[u.role] = (acc[u.role]||0)+1; return acc; }, {});
+  new Chart(document.getElementById("usersChart"), {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(roleCounts),
+      datasets: [{
+        data: Object.values(roleCounts),
+        backgroundColor: ['#007bff','#28a745','#ffc107','#dc3545']
+      }]
+    }
+  });
+
+  // Chart: Payments by Status
+  const statusCounts = payments.reduce((acc,p)=> { acc[p.payment_status] = (acc[p.payment_status]||0)+1; return acc; }, {});
+  new Chart(document.getElementById("paymentsChart"), {
+    type: 'pie',
+    data: {
+      labels: Object.keys(statusCounts),
+      datasets: [{
+        data: Object.values(statusCounts),
+        backgroundColor: ['#28a745','#ffc107','#dc3545','#17a2b8']
+      }]
+    }
+  });
+
+  // Chart: Content Overview
+  new Chart(document.getElementById("contentChart"), {
+    type: 'bar',
+    data: {
+      labels: ['Movies','TV Shows','Genres'],
+      datasets: [{
+        label: 'Total Count',
+        data: [movies.length, shows.length, genres.length],
+        backgroundColor: ['#007bff','#28a745','#ffc107']
+      }]
+    },
+    options: { scales: { y: { beginAtZero:true } } }
+  });
+}
+
+// Initial load
+loadReports();
+</script>
 {% endblock %}

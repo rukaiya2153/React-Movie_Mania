@@ -1,4 +1,85 @@
 {% extends "base.html" %}
+{% block title %}Users | Movie Mania{% endblock %}
+
 {% block content %}
-<h2>Users</h2>
+<div class="d-flex justify-content-between mb-3">
+  <h3>Users</h3>
+</div>
+
+<div class="card p-3 table-responsive">
+  <table class="table table-dark table-hover align-middle">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Username</th>
+        <th>Full Name</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Phone</th>
+        <th>Date Joined</th>
+        <th>Active</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="usersTable">
+      <tr><td colspan="9" class="text-center">Loading...</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+const API = "http://127.0.0.1:8000/api/admin/users/";
+const token = localStorage.getItem("adminToken");
+const usersTable = document.getElementById("usersTable");
+
+// Load users
+async function loadUsers() {
+  try {
+    const res = await fetch(API, { headers: { Authorization: "Bearer " + token } });
+    const data = await res.json();
+
+    usersTable.innerHTML = data.length
+      ? data.map(u => `
+        <tr>
+          <td>${u.id}</td>
+          <td>${u.username}</td>
+          <td>${u.first_name} ${u.last_name}</td>
+          <td>${u.email}</td>
+          <td>${u.role}</td>
+          <td>${u.phone || '-'}</td>
+          <td>${new Date(u.date_joined).toLocaleDateString()}</td>
+          <td>${u.is_active ? '' : ''}</td>
+          <td>
+            <button class="btn btn-sm btn-warning" onclick="toggleActive(${u.id}, ${u.is_active})">
+              ${u.is_active ? 'Deactivate' : 'Activate'}
+            </button>
+          </td>
+        </tr>
+      `).join("")
+      : `<tr><td colspan="9" class="text-center">No users found</td></tr>`;
+  } catch (err) {
+    console.error(err);
+    usersTable.innerHTML = `<tr><td colspan="9" class="text-center text-danger">Failed to load users</td></tr>`;
+  }
+}
+
+// Toggle active status
+async function toggleActive(id, isActive) {
+  const res = await fetch(API + id + "/", {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + token
+    },
+    body: JSON.stringify({ is_active: !isActive })
+  });
+  if (!res.ok) return alert("Failed to update user");
+  loadUsers();
+}
+
+// Initial load
+loadUsers();
+</script>
 {% endblock %}

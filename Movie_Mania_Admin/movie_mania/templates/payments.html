@@ -1,4 +1,79 @@
 {% extends "base.html" %}
+{% block title %}Payments | Movie Mania{% endblock %}
+
 {% block content %}
-<h2>Payments</h2>
+<div class="d-flex justify-content-between mb-3">
+  <h3>Payments</h3>
+</div>
+
+<div class="card p-3 table-responsive">
+  <table class="table table-dark table-hover align-middle">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>User ID</th>
+        <th>Amount</th>
+        <th>Status</th>
+        <th>Payment Date</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="paymentsTable">
+      <tr><td colspan="6" class="text-center">Loading...</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+const API = "http://127.0.0.1:8000/api/admin/payments/";
+const token = localStorage.getItem("adminToken");
+const paymentsTable = document.getElementById("paymentsTable");
+
+// Load payments
+async function loadPayments() {
+  try {
+    const res = await fetch(API, { headers: { Authorization: "Bearer " + token } });
+    const data = await res.json();
+
+    paymentsTable.innerHTML = data.length
+      ? data.map(p => `
+        <tr>
+          <td>${p.id}</td>
+          <td>${p.user_id}</td>
+          <td>₹${p.amount.toFixed(2)}</td>
+          <td>${p.payment_status}</td>
+          <td>${new Date(p.payment_date).toLocaleString()}</td>
+          <td>
+            ${p.payment_status !== 'Completed' 
+              ? `<button class="btn btn-sm btn-warning" onclick="updateStatus(${p.id})">Mark Completed</button>` 
+              : '-'}
+          </td>
+        </tr>
+      `).join("")
+      : `<tr><td colspan="6" class="text-center">No payments found</td></tr>`;
+  } catch (err) {
+    console.error(err);
+    paymentsTable.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Failed to load payments</td></tr>`;
+  }
+}
+
+// Update payment status
+async function updateStatus(id) {
+  const res = await fetch(API + id + "/", {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + token
+    },
+    body: JSON.stringify({ payment_status: "Completed" })
+  });
+  if (!res.ok) return alert("Failed to update payment");
+  loadPayments();
+}
+
+// Initial load
+loadPayments();
+</script>
 {% endblock %}
