@@ -7,3 +7,4 @@ class PaymentAdminViewSet(ModelViewSet):
     queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
     permission_classes = [IsAdminUser]
+    http_method_names = ["get"]   # READ ONLY

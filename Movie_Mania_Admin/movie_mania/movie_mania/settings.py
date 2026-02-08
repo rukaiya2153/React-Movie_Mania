@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'payments',
     'reports',
     'shows',
+    # 'shows.apps.ShowsConfig'
     'wishlist',
 ]
 

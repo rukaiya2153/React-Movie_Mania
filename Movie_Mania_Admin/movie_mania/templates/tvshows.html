@@ -1,4 +1,178 @@
 {% extends "base.html" %}
+{% block title %}TV Shows | Movie Mania{% endblock %}
+
 {% block content %}
-<h2>TV Shows</h2>
+<div class="d-flex justify-content-between mb-3">
+  <h3>TV Shows</h3>
+  <button class="btn btn-danger" onclick="openAddShow()">+ Add TV Show</button>
+</div>
+
+<div class="card p-3 table-responsive">
+  <table class="table table-dark table-hover align-middle">
+    <thead>
+      <tr>
+        <th>Poster</th>
+        <th>Title</th>
+        <th>Genre</th>
+        <th>Seasons</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="showsTable">
+      <tr><td colspan="5" class="text-center">Loading...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ADD SHOW MODAL -->
+<div class="modal fade" id="addShowModal">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content bg-dark text-white">
+      <div class="modal-header">
+        <h5>Add TV Show</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addShowForm">
+          <input class="form-control mb-2" id="title" placeholder="Title" required>
+          <textarea class="form-control mb-2" id="description" placeholder="Description"></textarea>
+          <input class="form-control mb-2" id="total_seasons" type="number" placeholder="Total Seasons" required>
+          <input class="form-control mb-2" id="thumbnail" type="file" accept="image/*" required>
+          <input class="form-control mb-2" id="genre_id" type="number" placeholder="Genre ID" required>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-danger" onclick="addShow()">Add</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT SHOW MODAL -->
+<div class="modal fade" id="editShowModal">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content bg-dark text-white">
+      <div class="modal-header">
+        <h5>Edit TV Show</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editShowForm">
+          <input type="hidden" id="edit_id">
+          <input class="form-control mb-2" id="edit_title" placeholder="Title" required>
+          <textarea class="form-control mb-2" id="edit_description" placeholder="Description"></textarea>
+          <input class="form-control mb-2" id="edit_total_seasons" type="number" placeholder="Total Seasons" required>
+          <input class="form-control mb-2" id="edit_thumbnail" type="file" accept="image/*">
+          <input class="form-control mb-2" id="edit_genre_id" type="number" placeholder="Genre ID" required>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-warning" onclick="updateShow()">Update</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+const API = "http://127.0.0.1:8000/api/admin/shows/";
+const token = localStorage.getItem("adminToken");
+const showsTable = document.getElementById("showsTable");
+
+// Load all shows
+async function loadShows() {
+  try {
+    const res = await fetch(API, { headers: { Authorization: "Bearer " + token } });
+    const data = await res.json();
+    showsTable.innerHTML = data.length
+      ? data.map(s => `
+        <tr>
+          <td><img src="${s.thumbnail}" width="50"></td>
+          <td>${s.title}</td>
+          <td>${s.genre}</td>
+          <td>${s.total_seasons}</td>
+          <td>
+            <button class="btn btn-sm btn-warning" onclick='openEditShow(${JSON.stringify(s)})'>✏️</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteShow(${s.id})">🗑</button>
+          </td>
+        </tr>
+      `).join("")
+      : `<tr><td colspan="5" class="text-center">No TV shows found</td></tr>`;
+  } catch (err) {
+    console.error(err);
+    showsTable.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Failed to load shows</td></tr>`;
+  }
+}
+
+// Open Add Modal
+function openAddShow() {
+  new bootstrap.Modal(addShowModal).show();
+}
+
+// Add show
+async function addShow() {
+  const formData = new FormData();
+  formData.append("title", title.value);
+  formData.append("description", description.value);
+  formData.append("total_seasons", total_seasons.value);
+  formData.append("thumbnail", thumbnail.files[0]);
+  formData.append("genre", genre_id.value);
+
+  const res = await fetch(API, {
+    method: "POST",
+    headers: { Authorization: "Bearer " + token },
+    body: formData
+  });
+
+  if (!res.ok) return alert("Failed to add show");
+  bootstrap.Modal.getInstance(addShowModal).hide();
+  addShowForm.reset();
+  loadShows();
+}
+
+// Open Edit Modal
+function openEditShow(s) {
+  edit_id.value = s.id;
+  edit_title.value = s.title;
+  edit_description.value = s.description;
+  edit_total_seasons.value = s.total_seasons;
+  edit_genre_id.value = s.genre;
+  edit_thumbnail.value = ""; // reset file input
+  new bootstrap.Modal(editShowModal).show();
+}
+
+// Update show
+async function updateShow() {
+  const formData = new FormData();
+  formData.append("title", edit_title.value);
+  formData.append("description", edit_description.value);
+  formData.append("total_seasons", edit_total_seasons.value);
+  if (edit_thumbnail.files.length > 0) formData.append("thumbnail", edit_thumbnail.files[0]);
+  formData.append("genre", edit_genre_id.value);
+
+  const res = await fetch(API + edit_id.value + "/", {
+    method: "PUT",
+    headers: { Authorization: "Bearer " + token },
+    body: formData
+  });
+
+  if (!res.ok) return alert("Failed to update show");
+  bootstrap.Modal.getInstance(editShowModal).hide();
+  loadShows();
+}
+
+// Delete show
+async function deleteShow(id) {
+  if (!confirm("Delete this TV show?")) return;
+  const res = await fetch(API + id + "/", { method: "DELETE", headers: { Authorization: "Bearer " + token } });
+  if (!res.ok) return alert("Failed to delete show");
+  loadShows();
+}
+
+// Initial load
+loadShows();
+</script>
 {% endblock %}

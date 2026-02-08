@@ -3,7 +3,7 @@
 
 {% block content %}
 
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
+<div class="d-flex justify-content-between mb-3">
   <h3>Movies</h3>
   <button class="btn btn-danger" onclick="openAddMovie()">+ Add Movie</button>
 </div>
@@ -15,72 +15,73 @@
         <th>Poster</th>
         <th>Title</th>
         <th>Genre</th>
-        <th>Views</th>
         <th>Actions</th>
       </tr>
     </thead>
     <tbody id="moviesTable">
       <tr>
-        <td colspan="5" class="text-center">Loading...</td>
+        <td colspan="4" class="text-center">Loading...</td>
       </tr>
     </tbody>
   </table>
 </div>
 
-<!-- Add Movie Modal -->
-<div class="modal fade" id="addMovieModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+<!-- ================= ADD MOVIE MODAL ================= -->
+<div class="modal fade" id="addMovieModal">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content bg-dark text-white">
 
       <div class="modal-header">
-        <h5 class="modal-title">Add Movie</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <h5>Add Movie</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
 
       <div class="modal-body">
-        <form id="addMovieForm" enctype="multipart/form-data">
-
-          <div class="mb-3">
-            <label class="form-label">Movie Title</label>
-            <input type="text" class="form-control" id="title" required>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Description</label>
-            <textarea class="form-control" id="description"></textarea>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Genre</label>
-            <select id="genre" class="form-control" required>
-              <option value="">-- Select Genre --</option>
-              {% for g in genres %}
-                <option value="{{ g.id }}">{{ g.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Release Year</label>
-            <input type="number" class="form-control" id="release_year" required>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Thumbnail Image</label>
-            <input type="file" class="form-control" id="thumbnail" accept="image/*">
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Trailer URL</label>
-            <input type="text" class="form-control" id="trailer">
-          </div>
-
+        <form id="addMovieForm">
+          <input class="form-control mb-2" id="title" placeholder="Title">
+          <textarea class="form-control mb-2" id="description" placeholder="Description"></textarea>
+          <input class="form-control mb-2" id="genre" type="number" placeholder="Genre ID">
+          <input class="form-control mb-2" id="release_year" type="number" placeholder="Release Year">
+          <input class="form-control mb-2" id="thumbnail" type="file">
+          <input class="form-control mb-2" id="trailer" placeholder="Trailer URL">
         </form>
       </div>
 
-      <div class="modal-footer flex-column flex-sm-row gap-2">
-        <button class="btn btn-secondary w-100 w-sm-auto" data-bs-dismiss="modal">Cancel</button>
-        <button class="btn btn-danger w-100 w-sm-auto" onclick="submitMovie()">Add Movie</button>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-danger" onclick="submitMovie()">Add</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ================= EDIT MOVIE MODAL ================= -->
+<div class="modal fade" id="editMovieModal">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content bg-dark text-white">
+
+      <div class="modal-header">
+        <h5>Edit Movie</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <form id="editMovieForm">
+          <input type="hidden" id="edit_id">
+
+          <input class="form-control mb-2" id="edit_title">
+          <textarea class="form-control mb-2" id="edit_description"></textarea>
+          <input class="form-control mb-2" id="edit_genre" type="number">
+          <input class="form-control mb-2" id="edit_release_year" type="number">
+          <input class="form-control mb-2" id="edit_thumbnail" type="file">
+          <input class="form-control mb-2" id="edit_trailer">
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-warning" onclick="updateMovie()">Update</button>
       </div>
 
     </div>
@@ -93,84 +94,96 @@
 <script>
 const API = "http://127.0.0.1:8000/api/admin/movies/";
 const token = localStorage.getItem("adminToken");
-if (!token) window.location.href = "/";
 
-// Load movies
+if (!token) location.href = "/";
+
+// LOAD MOVIES
 async function loadMovies() {
-  const res = await fetch(API, { headers: { "Authorization": "Bearer " + token } });
+  const res = await fetch(API, {
+    headers: { Authorization: "Bearer " + token }
+  });
   const data = await res.json();
-  let html = "";
 
-  if (!data.length) html = `<tr><td colspan="5" class="text-center">No movies found</td></tr>`;
+  moviesTable.innerHTML = data.map(m => `
+    <tr>
+      <td>${m.thumbnail ? `<img src="${m.thumbnail}" width="50">` : "-"}</td>
+      <td>${m.title}</td>
+      <td>${m.genre_name || m.genre}</td>
+      <td>
+        <button class="btn btn-sm btn-warning" onclick='openEditMovie(${JSON.stringify(m)})'>✏️</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteMovie(${m.id})">🗑</button>
+      </td>
+    </tr>
+  `).join("");
+}
 
-  data.forEach(movie => {
-    html += `
-      <tr>
-        <td>${movie.thumbnail ? `<img src="${movie.thumbnail}" class="img-fluid" style="max-width:50px;">` : "-"}</td>
-        <td>${movie.title}</td>
-        <td>${movie.genre_name || "-"}</td>
-        <td>${movie.views || 0}</td>
-        <td>
-          <button class="btn btn-sm btn-danger" onclick="deleteMovie(${movie.id})">🗑</button>
-        </td>
-      </tr>
-    `;
+// ADD
+function openAddMovie() {
+  new bootstrap.Modal(addMovieModal).show();
+}
+
+async function submitMovie() {
+  const fd = new FormData();
+  fd.append("title", title.value);
+  fd.append("description", description.value);
+  fd.append("genre", genre.value);
+  fd.append("release_year", release_year.value);
+  fd.append("trailer_url", trailer.value);
+  if (thumbnail.files[0]) fd.append("thumbnail", thumbnail.files[0]);
+
+  await fetch(API, {
+    method: "POST",
+    headers: { Authorization: "Bearer " + token },
+    body: fd
   });
 
-  document.getElementById("moviesTable").innerHTML = html;
+  bootstrap.Modal.getInstance(addMovieModal).hide();
+  loadMovies();
 }
 
-// Open modal
-function openAddMovie() {
-  new bootstrap.Modal(document.getElementById("addMovieModal")).show();
+// EDIT
+function openEditMovie(m) {
+  edit_id.value = m.id;
+  edit_title.value = m.title;
+  edit_description.value = m.description;
+  edit_genre.value = m.genre;
+  edit_release_year.value = m.release_year;
+  edit_trailer.value = m.trailer_url || "";
+
+  new bootstrap.Modal(editMovieModal).show();
 }
 
-// Submit movie safely
-async function submitMovie() {
-  const titleVal = title.value.trim();
-  const descVal = description.value.trim();
-  const genreVal = genre.value;
-  const yearVal = release_year.value;
-  const trailerVal = trailer.value.trim();
-  const thumbnailFile = thumbnail.files[0];
+async function updateMovie() {
+  const id = edit_id.value;
+  const fd = new FormData();
 
-  // Client-side validation
-  if (!titleVal) { alert("Title is required"); title.focus(); return; }
-  if (!genreVal) { alert("Select a valid genre"); genre.focus(); return; }
-  if (!yearVal || isNaN(yearVal) || yearVal < 1900 || yearVal > new Date().getFullYear()) { alert("Enter a valid release year"); release_year.focus(); return; }
-  if (trailerVal && !/^https?:\/\/\S+/.test(trailerVal)) { alert("Enter a valid trailer URL"); trailer.focus(); return; }
+  fd.append("title", edit_title.value);
+  fd.append("description", edit_description.value);
+  fd.append("genre", edit_genre.value);
+  fd.append("release_year", edit_release_year.value);
+  fd.append("trailer_url", edit_trailer.value);
 
-  const formData = new FormData();
-  formData.append("title", titleVal);
-  formData.append("description", descVal);
-  formData.append("genre", genreVal);
-  formData.append("release_year", yearVal);
-  formData.append("trailer_url", trailerVal);
-  if (thumbnailFile) formData.append("thumbnail", thumbnailFile);
-
-  try {
-    const res = await fetch(API, { method: "POST", headers: { "Authorization": "Bearer " + token }, body: formData });
-    if (!res.ok) {
-      const errorData = await res.json();
-      console.error("Add Movie Error:", errorData);
-      alert("Failed to add movie: " + JSON.stringify(errorData));
-      return;
-    }
-
-    addMovieForm.reset();
-    bootstrap.Modal.getInstance(addMovieModal).hide();
-    loadMovies();
-    alert("Movie added successfully!");
-  } catch (err) {
-    console.error("Network error:", err);
-    alert("An unexpected error occurred.");
+  if (edit_thumbnail.files[0]) {
+    fd.append("thumbnail", edit_thumbnail.files[0]);
   }
+
+  await fetch(API + id + "/", {
+    method: "PUT",
+    headers: { Authorization: "Bearer " + token },
+    body: fd
+  });
+
+  bootstrap.Modal.getInstance(editMovieModal).hide();
+  loadMovies();
 }
 
-// Delete movie
+// DELETE
 async function deleteMovie(id) {
   if (!confirm("Delete this movie?")) return;
-  await fetch(API + id + "/", { method: "DELETE", headers: { "Authorization": "Bearer " + token } });
+  await fetch(API + id + "/", {
+    method: "DELETE",
+    headers: { Authorization: "Bearer " + token }
+  });
   loadMovies();
 }
 

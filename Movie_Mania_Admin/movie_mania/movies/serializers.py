@@ -6,15 +6,10 @@ class MovieSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Movie
-        fields = [
-            "id",
-            "title",
-            "description",
-            "genre",
-            "genre_name",
-            "release_year",
-            "thumbnail",
-            "trailer_url",
-            "is_premium",
-            "created_at",
-        ]
+        fields = "__all__"
+
+def get_thumbnail(self, obj):
+    request = self.context.get("request")
+    if obj.thumbnail and request:
+        return request.build_absolute_uri(obj.thumbnail.url)
+        return None

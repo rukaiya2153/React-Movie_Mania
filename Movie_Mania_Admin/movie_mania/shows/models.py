@@ -6,7 +6,7 @@ class Show(models.Model):
     genre = models.ForeignKey(Genre, on_delete=models.CASCADE)
     description = models.TextField()
     total_seasons = models.IntegerField()
-    thumbnail = models.CharField(max_length=255)
+    thumbnail = models.ImageField(upload_to="shows/")
     created_at = models.DateTimeField(auto_now_add=True)
 
 class Episode(models.Model):
@@ -14,5 +14,9 @@ class Episode(models.Model):
     season_number = models.IntegerField()
     episode_number = models.IntegerField()
     title = models.CharField(max_length=200)
-    video_url = models.CharField(max_length=255)
+    video_url = models.URLField()
     duration = models.IntegerField()
+
+    class Meta:
+        unique_together = ("show", "season_number", "episode_number")
+

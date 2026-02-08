@@ -1,7 +1,7 @@
-# from django.urls import path
-# from .views import movies_list_create, movie_update_delete
+from rest_framework.routers import DefaultRouter
+from .views import MovieAdminViewSet
 
-# urlpatterns = [
-#     path("", movies_list_create),
-#     path("<int:pk>/", movie_update_delete),
-# ]
+router = DefaultRouter()
+router.register(r'admin/movies', MovieAdminViewSet, basename="admin-movies")
+
+urlpatterns = router.urls
