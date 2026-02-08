@@ -6,7 +6,7 @@ class Movie(models.Model):
     description = models.TextField()
     genre = models.ForeignKey(Genre, on_delete=models.CASCADE)
     release_year = models.IntegerField()
-    thumbnail = models.CharField(max_length=255)
+    thumbnail = models.CharField(max_length=255)   # URL or /media path
     trailer_url = models.CharField(max_length=255)
     is_premium = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

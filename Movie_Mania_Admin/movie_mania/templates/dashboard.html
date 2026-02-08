@@ -1,36 +1,97 @@
 {% extends "base.html" %}
+{% block title %}Dashboard | Movie Mania{% endblock %}
+
 {% block content %}
 
-<h1>Dashboard</h1>
+<div class="row">
+  <div class="col-12 col-md-3 mb-3">
+    <div class="card p-3">
+      <h5>Total Movies</h5>
+      <h3 id="totalMovies">0</h3>
+    </div>
+  </div>
 
-<div class="stats">
-    <div class="card">Total Movies <span id="movies"></span></div>
-    <div class="card">Total Shows <span id="shows"></span></div>
-    <div class="card">Total Users <span id="users"></span></div>
-    <div class="card">Total Revenue <span id="revenue"></span></div>
+  <div class="col-12 col-md-3 mb-3">
+    <div class="card p-3">
+      <h5>Total Shows</h5>
+      <h3 id="totalShows">0</h3>
+    </div>
+  </div>
+
+  <div class="col-12 col-md-3 mb-3">
+    <div class="card p-3">
+      <h5>Total Users</h5>
+      <h3 id="totalUsers">0</h3>
+    </div>
+  </div>
+
+  <div class="col-12 col-md-3 mb-3">
+    <div class="card p-3">
+      <h5>Total Revenue</h5>
+      <h3 id="totalRevenue">₹0</h3>
+    </div>
+  </div>
 </div>
 
-<h3>Recent Uploads</h3>
-<table>
-<thead>
-<tr><th>Title</th><th>Views</th></tr>
-</thead>
-<tbody id="recent"></tbody>
-</table>
+<div class="card mt-4 p-4" style="overflow-x:auto;">
+  <h5>Recent Uploads</h5>
+  <canvas id="recentUploadsChart"></canvas>
+</div>
 
+{% endblock %}
+
+{% block page_js %}
 <script>
-authFetch("/api/dashboard/").then(data => {
-    document.getElementById("movies").innerText = data.total_movies;
-    document.getElementById("shows").innerText = data.total_shows;
-    document.getElementById("users").innerText = data.total_users;
-    document.getElementById("revenue").innerText = "₹" + data.total_revenue;
+  const API = "http://127.0.0.1:8000/api";
+  const token = localStorage.getItem("adminToken");
 
-    let html = "";
-    data.recent_uploads.forEach(m => {
-        html += `<tr><td>${m.title}</td><td>${m.views}</td></tr>`;
+  if (!token) {
+    alert("Please login first!");
+    window.location.href = "/";
+  }
+
+  async function fetchDashboard() {
+    const res = await fetch(API + "/dashboard/", {
+      headers: {
+        "Authorization": "Bearer " + token
+      }
     });
-    document.getElementById("recent").innerHTML = html;
-});
-</script>
 
+    if (!res.ok) return;
+
+    const data = await res.json();
+
+    document.getElementById("totalMovies").innerText = data.total_movies;
+    document.getElementById("totalShows").innerText = data.total_shows;
+    document.getElementById("totalUsers").innerText = data.total_users;
+    document.getElementById("totalRevenue").innerText = "₹" + data.total_revenue;
+    document.getElementById("adminName").innerText = data.admin_name;
+
+    const ctx = document.getElementById("recentUploadsChart").getContext("2d");
+
+    new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: data.recent_uploads.map(i => i.title),
+        datasets: [{
+          label: "Views",
+          data: data.recent_uploads.map(i => i.views),
+          backgroundColor: "#e50914"
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { labels: { color: "#fff" } }
+        },
+        scales: {
+          x: { ticks: { color: "#fff" } },
+          y: { ticks: { color: "#fff" }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  fetchDashboard();
+</script>
 {% endblock %}

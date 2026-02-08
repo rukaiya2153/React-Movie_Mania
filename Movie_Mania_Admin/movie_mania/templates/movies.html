@@ -1,35 +1,179 @@
 {% extends "base.html" %}
+{% block title %}Movies | Movie Mania{% endblock %}
+
 {% block content %}
 
-<h1>Movies</h1>
-<button>Add New Movie</button>
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
+  <h3>Movies</h3>
+  <button class="btn btn-danger" onclick="openAddMovie()">+ Add Movie</button>
+</div>
 
-<table>
-<thead>
-<tr>
-<th>Title</th><th>Genre</th><th>Year</th><th>Actions</th>
-</tr>
-</thead>
-<tbody id="movies-table"></tbody>
-</table>
+<div class="card p-3 table-responsive">
+  <table class="table table-dark table-hover align-middle">
+    <thead>
+      <tr>
+        <th>Poster</th>
+        <th>Title</th>
+        <th>Genre</th>
+        <th>Views</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="moviesTable">
+      <tr>
+        <td colspan="5" class="text-center">Loading...</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
 
+<!-- Add Movie Modal -->
+<div class="modal fade" id="addMovieModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+    <div class="modal-content bg-dark text-white">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Add Movie</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <form id="addMovieForm" enctype="multipart/form-data">
+
+          <div class="mb-3">
+            <label class="form-label">Movie Title</label>
+            <input type="text" class="form-control" id="title" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" id="description"></textarea>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Genre</label>
+            <select id="genre" class="form-control" required>
+              <option value="">-- Select Genre --</option>
+              {% for g in genres %}
+                <option value="{{ g.id }}">{{ g.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Release Year</label>
+            <input type="number" class="form-control" id="release_year" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Thumbnail Image</label>
+            <input type="file" class="form-control" id="thumbnail" accept="image/*">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Trailer URL</label>
+            <input type="text" class="form-control" id="trailer">
+          </div>
+
+        </form>
+      </div>
+
+      <div class="modal-footer flex-column flex-sm-row gap-2">
+        <button class="btn btn-secondary w-100 w-sm-auto" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-danger w-100 w-sm-auto" onclick="submitMovie()">Add Movie</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block page_js %}
 <script>
-authFetch("/api/movies/").then(data => {
-    let html = "";
-    data.forEach(m => {
-        html += `
-        <tr>
-            <td>${m.title}</td>
-            <td>${m.genre}</td>
-            <td>${m.release_year}</td>
-            <td>
-                <button>Edit</button>
-                <button>Delete</button>
-            </td>
-        </tr>`;
-    });
-    document.getElementById("movies-table").innerHTML = html;
-});
-</script>
+const API = "http://127.0.0.1:8000/api/admin/movies/";
+const token = localStorage.getItem("adminToken");
+if (!token) window.location.href = "/";
 
+// Load movies
+async function loadMovies() {
+  const res = await fetch(API, { headers: { "Authorization": "Bearer " + token } });
+  const data = await res.json();
+  let html = "";
+
+  if (!data.length) html = `<tr><td colspan="5" class="text-center">No movies found</td></tr>`;
+
+  data.forEach(movie => {
+    html += `
+      <tr>
+        <td>${movie.thumbnail ? `<img src="${movie.thumbnail}" class="img-fluid" style="max-width:50px;">` : "-"}</td>
+        <td>${movie.title}</td>
+        <td>${movie.genre_name || "-"}</td>
+        <td>${movie.views || 0}</td>
+        <td>
+          <button class="btn btn-sm btn-danger" onclick="deleteMovie(${movie.id})">🗑</button>
+        </td>
+      </tr>
+    `;
+  });
+
+  document.getElementById("moviesTable").innerHTML = html;
+}
+
+// Open modal
+function openAddMovie() {
+  new bootstrap.Modal(document.getElementById("addMovieModal")).show();
+}
+
+// Submit movie safely
+async function submitMovie() {
+  const titleVal = title.value.trim();
+  const descVal = description.value.trim();
+  const genreVal = genre.value;
+  const yearVal = release_year.value;
+  const trailerVal = trailer.value.trim();
+  const thumbnailFile = thumbnail.files[0];
+
+  // Client-side validation
+  if (!titleVal) { alert("Title is required"); title.focus(); return; }
+  if (!genreVal) { alert("Select a valid genre"); genre.focus(); return; }
+  if (!yearVal || isNaN(yearVal) || yearVal < 1900 || yearVal > new Date().getFullYear()) { alert("Enter a valid release year"); release_year.focus(); return; }
+  if (trailerVal && !/^https?:\/\/\S+/.test(trailerVal)) { alert("Enter a valid trailer URL"); trailer.focus(); return; }
+
+  const formData = new FormData();
+  formData.append("title", titleVal);
+  formData.append("description", descVal);
+  formData.append("genre", genreVal);
+  formData.append("release_year", yearVal);
+  formData.append("trailer_url", trailerVal);
+  if (thumbnailFile) formData.append("thumbnail", thumbnailFile);
+
+  try {
+    const res = await fetch(API, { method: "POST", headers: { "Authorization": "Bearer " + token }, body: formData });
+    if (!res.ok) {
+      const errorData = await res.json();
+      console.error("Add Movie Error:", errorData);
+      alert("Failed to add movie: " + JSON.stringify(errorData));
+      return;
+    }
+
+    addMovieForm.reset();
+    bootstrap.Modal.getInstance(addMovieModal).hide();
+    loadMovies();
+    alert("Movie added successfully!");
+  } catch (err) {
+    console.error("Network error:", err);
+    alert("An unexpected error occurred.");
+  }
+}
+
+// Delete movie
+async function deleteMovie(id) {
+  if (!confirm("Delete this movie?")) return;
+  await fetch(API + id + "/", { method: "DELETE", headers: { "Authorization": "Bearer " + token } });
+  loadMovies();
+}
+
+loadMovies();
+</script>
 {% endblock %}

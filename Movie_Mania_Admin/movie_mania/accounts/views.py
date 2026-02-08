@@ -11,6 +11,8 @@ from .models import User, OTP, LoginAttempt
 from movies.models import Movie
 from shows.models import Show
 from payments.models import Payment
+from django.shortcuts import render
+
 
 
 # ---------------- LOGIN API ----------------
@@ -153,3 +155,32 @@ def dashboard_data(request):
         "total_revenue": total_revenue,
         "recent_uploads": recent_list
     })
+
+
+def dashboard_page(request):
+    return render(request, "dashboard.html")
+
+
+def movies_page(request):
+    return render(request, "movies.html")
+
+
+def tvshows_page(request):
+    return render(request, "tvshows.html")
+
+
+def genres_page(request):
+    return render(request, "genres.html")
+
+
+def users_page(request):
+    return render(request, "users.html")
+
+
+def payments_page(request):
+    return render(request, "payments.html")
+
+
+def reports_page(request):
+    return render(request, "reports.html")
+

@@ -3,14 +3,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Admin Dashboard | Movie Mania</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Admin Dashboard | Movie Mania{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
 
   <style>
     body {
@@ -19,12 +23,14 @@
       font-family: 'Helvetica Neue', Arial, sans-serif;
     }
 
+    /* Sidebar */
     .sidebar {
       background-color: #111;
       width: 220px;
       height: 100vh;
       position: fixed;
       padding: 20px 0;
+      transition: all 0.3s;
     }
 
     .sidebar a {
@@ -33,39 +39,38 @@
       color: #aaa;
       text-decoration: none;
       margin-bottom: 5px;
+      font-size: 15px;
     }
 
-    .sidebar a:hover {
+    .sidebar a i {
+      margin-right: 10px;
+    }
+
+    .sidebar a:hover,
+    .sidebar a.active {
       background-color: #e50914;
       color: #fff;
       border-radius: 5px;
     }
 
+    /* Main content */
     .main {
       margin-left: 240px;
       padding: 30px;
+      transition: all 0.3s;
     }
 
-    .card {
-      background-color: #222;
-      border: none;
-      color: #fff;
-      margin-bottom: 20px;
-    }
-
-    .card h5 {
-      color: #e50914;
-    }
-
+    /* Header */
     .header {
       display: flex;
       justify-content: flex-end;
       align-items: center;
       margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
     }
 
     .header span {
-      margin-right: 20px;
       font-weight: bold;
     }
 
@@ -79,124 +84,89 @@
     .btn-logout:hover {
       background-color: #f40612;
     }
+
+    /* Cards */
+    .card {
+      background-color: #222;
+      border: none;
+      color: #fff;
+      margin-bottom: 20px;
+      border-radius: 10px;
+    }
+
+    .card h5 {
+      color: #e50914;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+      }
+
+      .main {
+        margin-left: 0;
+        padding: 20px 10px;
+      }
+
+      .header {
+        justify-content: space-between;
+      }
+      .dashboard-card {
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(229, 9, 20, 0.4);
+}
+
+    }
   </style>
 </head>
 
 <body>
 
+<!-- SIDEBAR -->
 <div class="sidebar">
-  <a href="#">Dashboard</a>
-  <a href="#">Movies</a>
-  <a href="#">TV Shows</a>
-  <a href="#">Genres</a>
-  <a href="#">Users</a>
-  <a href="#">Wishlist</a>
-  <a href="#">Payments</a>
-  <a href="#">Reports</a>
-  <a href="#" onclick="logout()">Logout</a>
+
+ <a href="/dashboard/"><i class="fas fa-chart-line"></i> Dashboard</a>
+<a href="/movies/"><i class="fas fa-film"></i> Movies</a>
+<a href="/tvshows/"><i class="fas fa-tv"></i> TV Shows</a>
+<a href="/genres/"><i class="fas fa-layer-group"></i> Genres</a>
+<a href="/users/"><i class="fas fa-users"></i> Users</a>
+<a href="/payments/"><i class="fas fa-credit-card"></i> Payments</a>
+<a href="/reports/"><i class="fas fa-file-alt"></i> Reports</a>
+<a href="#" onclick="logout()">
+  <i class="fas fa-sign-out-alt"></i> Logout
+</a>
+
 </div>
 
+
+<!-- MAIN CONTENT -->
 <div class="main">
   <div class="header">
     <span id="adminName">Admin</span>
     <button class="btn btn-logout" onclick="logout()">Logout</button>
   </div>
 
-  <div class="row">
-    <div class="col-md-3">
-      <div class="card p-3">
-        <h5>Total Movies</h5>
-        <h3 id="totalMovies">0</h3>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card p-3">
-        <h5>Total Shows</h5>
-        <h3 id="totalShows">0</h3>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card p-3">
-        <h5>Total Users</h5>
-        <h3 id="totalUsers">0</h3>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card p-3">
-        <h5>Total Revenue</h5>
-        <h3 id="totalRevenue">$0</h3>
-      </div>
-    </div>
-  </div>
-
-  <div class="card mt-4 p-3">
-    <canvas id="recentUploadsChart"></canvas>
-  </div>
+  {% block content %}{% endblock %}
 </div>
 
 <script>
-  const API = "http://127.0.0.1:8000/api";
-  const token = localStorage.getItem("adminToken");
-
-  if (!token) {
-    alert("Please login first!");
-    window.location.href = "/login/";
-  }
-
-  async function fetchDashboard() {
-    const res = await fetch(API + "/dashboard-data/", {
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + token
-      }
-    });
-
-    if (res.status === 401) {
-      alert("Session expired! Please login again.");
-      window.location.href = "/login/";
-      return;
-    }
-
-    const data = await res.json();
-
-    // Update dashboard stats
-    document.getElementById("totalMovies").innerText = data.total_movies;
-    document.getElementById("totalShows").innerText = data.total_shows;
-    document.getElementById("totalUsers").innerText = data.total_users;
-    document.getElementById("totalRevenue").innerText = "₹" + data.total_revenue;
-    document.getElementById("adminName").innerText = data.admin_name;
-
-    // Chart: Recent Uploads
-    const ctx = document.getElementById("recentUploadsChart").getContext("2d");
-    new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: data.recent_uploads.map(item => item.title),
-        datasets: [{
-          label: 'Recent Uploads',
-          data: data.recent_uploads.map(item => item.views),
-          backgroundColor: '#e50914'
-        }]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          y: { beginAtZero: true, ticks: { color: "#fff" } },
-          x: { ticks: { color: "#fff" } }
-        },
-        plugins: { legend: { labels: { color: "#fff" } } }
-      }
-    });
-  }
-
-  function logout() {
+   function logout() {
     localStorage.removeItem("adminToken");
     localStorage.removeItem("refreshToken");
-    window.location.href = "/login/";
-  }
 
-  fetchDashboard();
+    // redirect to default login page
+    window.location.href = "/";
+  }
 </script>
 
+{% block page_js %}{% endblock %}
 </body>
 </html>
