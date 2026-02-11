@@ -70,12 +70,12 @@
         <form id="editMovieForm">
           <input type="hidden" id="edit_id">
 
-          <input class="form-control mb-2" id="edit_title">
-          <textarea class="form-control mb-2" id="edit_description"></textarea>
-          <input class="form-control mb-2" id="edit_genre" type="number">
-          <input class="form-control mb-2" id="edit_release_year" type="number">
+          <input class="form-control mb-2" id="edit_title" placeholder="Title">
+          <textarea class="form-control mb-2" id="edit_description" placeholder="Description"></textarea>
+          <input class="form-control mb-2" id="edit_genre" type="number" placeholder="Genre ID">
+          <input class="form-control mb-2" id="edit_release_year" type="number" placeholder="Release Year">
           <input class="form-control mb-2" id="edit_thumbnail" type="file">
-          <input class="form-control mb-2" id="edit_trailer">
+          <input class="form-control mb-2" id="edit_trailer" placeholder="Trailer URL">
         </form>
       </div>
 
@@ -91,13 +91,17 @@
 {% endblock %}
 
 {% block page_js %}
+
+<!-- jQuery CDN -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
 <script>
 const API = "http://127.0.0.1:8000/api/admin/movies/";
 const token = localStorage.getItem("adminToken");
 
 if (!token) location.href = "/";
 
-// LOAD MOVIES
+// ================= LOAD MOVIES =================
 async function loadMovies() {
   const res = await fetch(API, {
     headers: { Authorization: "Bearer " + token }
@@ -117,67 +121,131 @@ async function loadMovies() {
   `).join("");
 }
 
-// ADD
+// ================= ADD MOVIE =================
 function openAddMovie() {
+  $("#addMovieForm")[0].reset();
+  $(".text-danger").remove();
   new bootstrap.Modal(addMovieModal).show();
 }
 
-async function submitMovie() {
-  const fd = new FormData();
-  fd.append("title", title.value);
-  fd.append("description", description.value);
-  fd.append("genre", genre.value);
-  fd.append("release_year", release_year.value);
-  fd.append("trailer_url", trailer.value);
-  if (thumbnail.files[0]) fd.append("thumbnail", thumbnail.files[0]);
+function submitMovie() {
 
-  await fetch(API, {
+  $(".text-danger").remove();
+  let valid = true;
+
+  if ($("#title").val().trim() === "") {
+    $("#title").after("<small class='text-danger'>Title is required</small>");
+    valid = false;
+  }
+
+  if ($("#description").val().trim() === "") {
+    $("#description").after("<small class='text-danger'>Description is required</small>");
+    valid = false;
+  }
+
+  if ($("#genre").val().trim() === "") {
+    $("#genre").after("<small class='text-danger'>Genre ID is required</small>");
+    valid = false;
+  }
+
+  if ($("#release_year").val().trim() === "") {
+    $("#release_year").after("<small class='text-danger'>Release year is required</small>");
+    valid = false;
+  }
+
+  if ($("#thumbnail").val() === "") {
+    $("#thumbnail").after("<small class='text-danger'>Thumbnail is required</small>");
+    valid = false;
+  }
+
+  if (!valid) return;
+
+  const fd = new FormData();
+  fd.append("title", $("#title").val());
+  fd.append("description", $("#description").val());
+  fd.append("genre", $("#genre").val());
+  fd.append("release_year", $("#release_year").val());
+  fd.append("trailer_url", $("#trailer").val());
+
+  if ($("#thumbnail")[0].files[0]) {
+    fd.append("thumbnail", $("#thumbnail")[0].files[0]);
+  }
+
+  fetch(API, {
     method: "POST",
     headers: { Authorization: "Bearer " + token },
     body: fd
+  }).then(() => {
+    bootstrap.Modal.getInstance(addMovieModal).hide();
+    loadMovies();
   });
-
-  bootstrap.Modal.getInstance(addMovieModal).hide();
-  loadMovies();
 }
 
-// EDIT
+// ================= EDIT MOVIE =================
 function openEditMovie(m) {
-  edit_id.value = m.id;
-  edit_title.value = m.title;
-  edit_description.value = m.description;
-  edit_genre.value = m.genre;
-  edit_release_year.value = m.release_year;
-  edit_trailer.value = m.trailer_url || "";
+  $(".text-danger").remove();
+
+  $("#edit_id").val(m.id);
+  $("#edit_title").val(m.title);
+  $("#edit_description").val(m.description);
+  $("#edit_genre").val(m.genre);
+  $("#edit_release_year").val(m.release_year);
+  $("#edit_trailer").val(m.trailer_url || "");
 
   new bootstrap.Modal(editMovieModal).show();
 }
 
-async function updateMovie() {
-  const id = edit_id.value;
-  const fd = new FormData();
+function updateMovie() {
 
-  fd.append("title", edit_title.value);
-  fd.append("description", edit_description.value);
-  fd.append("genre", edit_genre.value);
-  fd.append("release_year", edit_release_year.value);
-  fd.append("trailer_url", edit_trailer.value);
+  $(".text-danger").remove();
+  let valid = true;
 
-  if (edit_thumbnail.files[0]) {
-    fd.append("thumbnail", edit_thumbnail.files[0]);
+  if ($("#edit_title").val().trim() === "") {
+    $("#edit_title").after("<small class='text-danger'>Title is required</small>");
+    valid = false;
   }
 
-  await fetch(API + id + "/", {
+  if ($("#edit_description").val().trim() === "") {
+    $("#edit_description").after("<small class='text-danger'>Description is required</small>");
+    valid = false;
+  }
+
+  if ($("#edit_genre").val().trim() === "") {
+    $("#edit_genre").after("<small class='text-danger'>Genre ID is required</small>");
+    valid = false;
+  }
+
+  if ($("#edit_release_year").val().trim() === "") {
+    $("#edit_release_year").after("<small class='text-danger'>Release year is required</small>");
+    valid = false;
+  }
+
+  if (!valid) return;
+
+  const id = $("#edit_id").val();
+  const fd = new FormData();
+
+  fd.append("title", $("#edit_title").val());
+  fd.append("description", $("#edit_description").val());
+  fd.append("genre", $("#edit_genre").val());
+  fd.append("release_year", $("#edit_release_year").val());
+  fd.append("trailer_url", $("#edit_trailer").val());
+
+  if ($("#edit_thumbnail")[0].files[0]) {
+    fd.append("thumbnail", $("#edit_thumbnail")[0].files[0]);
+  }
+
+  fetch(API + id + "/", {
     method: "PUT",
     headers: { Authorization: "Bearer " + token },
     body: fd
+  }).then(() => {
+    bootstrap.Modal.getInstance(editMovieModal).hide();
+    loadMovies();
   });
-
-  bootstrap.Modal.getInstance(editMovieModal).hide();
-  loadMovies();
 }
 
-// DELETE
+// ================= DELETE =================
 async function deleteMovie(id) {
   if (!confirm("Delete this movie?")) return;
   await fetch(API + id + "/", {
@@ -189,4 +257,5 @@ async function deleteMovie(id) {
 
 loadMovies();
 </script>
+
 {% endblock %}

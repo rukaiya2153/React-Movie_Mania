@@ -34,16 +34,16 @@
       </div>
       <div class="modal-body">
         <form id="addShowForm">
-          <input class="form-control mb-2" id="title" placeholder="Title" required>
+          <input class="form-control mb-2" id="title" placeholder="Title">
           <textarea class="form-control mb-2" id="description" placeholder="Description"></textarea>
-          <input class="form-control mb-2" id="total_seasons" type="number" placeholder="Total Seasons" required>
-          <input class="form-control mb-2" id="thumbnail" type="file" accept="image/*" required>
-          <input class="form-control mb-2" id="genre_id" type="number" placeholder="Genre ID" required>
+          <input class="form-control mb-2" id="total_seasons" type="number" placeholder="Total Seasons">
+          <input class="form-control mb-2" id="thumbnail" type="file" accept="image/*">
+          <input class="form-control mb-2" id="genre_id" type="number" placeholder="Genre ID">
         </form>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button class="btn btn-danger" onclick="addShow()">Add</button>
+        <button class="btn btn-danger" id="addShowBtn">Add</button>
       </div>
     </div>
   </div>
@@ -60,16 +60,16 @@
       <div class="modal-body">
         <form id="editShowForm">
           <input type="hidden" id="edit_id">
-          <input class="form-control mb-2" id="edit_title" placeholder="Title" required>
+          <input class="form-control mb-2" id="edit_title" placeholder="Title">
           <textarea class="form-control mb-2" id="edit_description" placeholder="Description"></textarea>
-          <input class="form-control mb-2" id="edit_total_seasons" type="number" placeholder="Total Seasons" required>
+          <input class="form-control mb-2" id="edit_total_seasons" type="number" placeholder="Total Seasons">
           <input class="form-control mb-2" id="edit_thumbnail" type="file" accept="image/*">
-          <input class="form-control mb-2" id="edit_genre_id" type="number" placeholder="Genre ID" required>
+          <input class="form-control mb-2" id="edit_genre_id" type="number" placeholder="Genre ID">
         </form>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button class="btn btn-warning" onclick="updateShow()">Update</button>
+        <button class="btn btn-warning" id="updateShowBtn">Update</button>
       </div>
     </div>
   </div>
@@ -77,12 +77,17 @@
 {% endblock %}
 
 {% block page_js %}
+<!-- jQuery CDN -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
 <script>
 const API = "http://127.0.0.1:8000/api/admin/shows/";
 const token = localStorage.getItem("adminToken");
 const showsTable = document.getElementById("showsTable");
 
-// Load all shows
+if (!token) location.href = "/";
+
+// ================= LOAD SHOWS =================
 async function loadShows() {
   try {
     const res = await fetch(API, { headers: { Authorization: "Bearer " + token } });
@@ -102,24 +107,48 @@ async function loadShows() {
       `).join("")
       : `<tr><td colspan="5" class="text-center">No TV shows found</td></tr>`;
   } catch (err) {
-    console.error(err);
     showsTable.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Failed to load shows</td></tr>`;
   }
 }
 
-// Open Add Modal
+// ================= OPEN ADD =================
 function openAddShow() {
+  $("#addShowForm")[0].reset();
+  $(".text-danger").remove();
   new bootstrap.Modal(addShowModal).show();
 }
 
-// Add show
-async function addShow() {
+// ================= ADD SHOW =================
+$('#addShowBtn').on('click', async function(e) {
+  e.preventDefault();
+  $(".text-danger").remove();
+  let valid = true;
+
+  if ($('#title').val().trim() === "") {
+    $('#title').after("<small class='text-danger'>Title is required</small>");
+    valid = false;
+  }
+  if ($('#total_seasons').val().trim() === "") {
+    $('#total_seasons').after("<small class='text-danger'>Total Seasons is required</small>");
+    valid = false;
+  }
+  if ($('#genre_id').val().trim() === "") {
+    $('#genre_id').after("<small class='text-danger'>Genre ID is required</small>");
+    valid = false;
+  }
+  if ($('#thumbnail')[0].files.length === 0) {
+    $('#thumbnail').after("<small class='text-danger'>Thumbnail is required</small>");
+    valid = false;
+  }
+
+  if (!valid) return;
+
   const formData = new FormData();
-  formData.append("title", title.value);
-  formData.append("description", description.value);
-  formData.append("total_seasons", total_seasons.value);
-  formData.append("thumbnail", thumbnail.files[0]);
-  formData.append("genre", genre_id.value);
+  formData.append("title", $('#title').val().trim());
+  formData.append("description", $('#description').val().trim());
+  formData.append("total_seasons", $('#total_seasons').val().trim());
+  formData.append("thumbnail", $('#thumbnail')[0].files[0]);
+  formData.append("genre", $('#genre_id').val().trim());
 
   const res = await fetch(API, {
     method: "POST",
@@ -128,51 +157,77 @@ async function addShow() {
   });
 
   if (!res.ok) return alert("Failed to add show");
-  bootstrap.Modal.getInstance(addShowModal).hide();
-  addShowForm.reset();
-  loadShows();
-}
 
-// Open Edit Modal
+  bootstrap.Modal.getInstance(addShowModal).hide();
+  $('#addShowForm')[0].reset();
+  loadShows();
+});
+
+// ================= OPEN EDIT =================
 function openEditShow(s) {
-  edit_id.value = s.id;
-  edit_title.value = s.title;
-  edit_description.value = s.description;
-  edit_total_seasons.value = s.total_seasons;
-  edit_genre_id.value = s.genre;
-  edit_thumbnail.value = ""; // reset file input
+  $(".text-danger").remove();
+  $('#edit_id').val(s.id);
+  $('#edit_title').val(s.title);
+  $('#edit_description').val(s.description);
+  $('#edit_total_seasons').val(s.total_seasons);
+  $('#edit_genre_id').val(s.genre);
+  $('#edit_thumbnail').val("");
   new bootstrap.Modal(editShowModal).show();
 }
 
-// Update show
-async function updateShow() {
-  const formData = new FormData();
-  formData.append("title", edit_title.value);
-  formData.append("description", edit_description.value);
-  formData.append("total_seasons", edit_total_seasons.value);
-  if (edit_thumbnail.files.length > 0) formData.append("thumbnail", edit_thumbnail.files[0]);
-  formData.append("genre", edit_genre_id.value);
+// ================= UPDATE SHOW =================
+$('#updateShowBtn').on('click', async function(e) {
+  e.preventDefault();
+  $(".text-danger").remove();
+  let valid = true;
 
-  const res = await fetch(API + edit_id.value + "/", {
+  if ($('#edit_title').val().trim() === "") {
+    $('#edit_title').after("<small class='text-danger'>Title is required</small>");
+    valid = false;
+  }
+  if ($('#edit_total_seasons').val().trim() === "") {
+    $('#edit_total_seasons').after("<small class='text-danger'>Total Seasons is required</small>");
+    valid = false;
+  }
+  if ($('#edit_genre_id').val().trim() === "") {
+    $('#edit_genre_id').after("<small class='text-danger'>Genre ID is required</small>");
+    valid = false;
+  }
+
+  if (!valid) return;
+
+  const formData = new FormData();
+  formData.append("title", $('#edit_title').val().trim());
+  formData.append("description", $('#edit_description').val().trim());
+  formData.append("total_seasons", $('#edit_total_seasons').val().trim());
+  if ($('#edit_thumbnail')[0].files.length > 0) {
+    formData.append("thumbnail", $('#edit_thumbnail')[0].files[0]);
+  }
+  formData.append("genre", $('#edit_genre_id').val().trim());
+
+  const res = await fetch(API + $('#edit_id').val() + "/", {
     method: "PUT",
     headers: { Authorization: "Bearer " + token },
     body: formData
   });
 
   if (!res.ok) return alert("Failed to update show");
+
   bootstrap.Modal.getInstance(editShowModal).hide();
   loadShows();
-}
+});
 
-// Delete show
+// ================= DELETE SHOW =================
 async function deleteShow(id) {
   if (!confirm("Delete this TV show?")) return;
-  const res = await fetch(API + id + "/", { method: "DELETE", headers: { Authorization: "Bearer " + token } });
+  const res = await fetch(API + id + "/", {
+    method: "DELETE",
+    headers: { Authorization: "Bearer " + token }
+  });
   if (!res.ok) return alert("Failed to delete show");
   loadShows();
 }
 
-// Initial load
 loadShows();
 </script>
 {% endblock %}

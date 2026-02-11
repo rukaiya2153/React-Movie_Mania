@@ -32,7 +32,7 @@
       </div>
       <div class="modal-body">
         <form id="addGenreForm">
-          <input class="form-control mb-2" id="genre_name" placeholder="Genre Name" required>
+          <input class="form-control mb-2" id="genre_name" placeholder="Genre Name">
         </form>
       </div>
       <div class="modal-footer">
@@ -54,7 +54,7 @@
       <div class="modal-body">
         <form id="editGenreForm">
           <input type="hidden" id="edit_genre_id">
-          <input class="form-control mb-2" id="edit_genre_name" placeholder="Genre Name" required>
+          <input class="form-control mb-2" id="edit_genre_name" placeholder="Genre Name">
         </form>
       </div>
       <div class="modal-footer">
@@ -67,16 +67,26 @@
 {% endblock %}
 
 {% block page_js %}
+
+<!-- jQuery CDN -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
 <script>
 const API = "http://127.0.0.1:8000/api/admin/genres/";
 const token = localStorage.getItem("adminToken");
 const genresTable = document.getElementById("genresTable");
 
-// Load genres
+if (!token) location.href = "/";
+
+// ================= LOAD GENRES =================
 async function loadGenres() {
   try {
-    const res = await fetch(API, { headers: { Authorization: "Bearer " + token } });
+    const res = await fetch(API, {
+      headers: { Authorization: "Bearer " + token }
+    });
+
     const data = await res.json();
+
     genresTable.innerHTML = data.length
       ? data.map(g => `
         <tr>
@@ -90,64 +100,105 @@ async function loadGenres() {
       `).join("")
       : `<tr><td colspan="3" class="text-center">No genres found</td></tr>`;
   } catch (err) {
-    console.error(err);
-    genresTable.innerHTML = `<tr><td colspan="3" class="text-center text-danger">Failed to load genres</td></tr>`;
+    genresTable.innerHTML =
+      `<tr><td colspan="3" class="text-center text-danger">Failed to load genres</td></tr>`;
   }
 }
 
-// Add Genre
-function openAddGenre() { new bootstrap.Modal(addGenreModal).show(); }
+// ================= OPEN ADD =================
+function openAddGenre() {
+  $("#addGenreForm")[0].reset();
+  $(".text-danger").remove();
+  new bootstrap.Modal(addGenreModal).show();
+}
 
-async function addGenre() {
-  const payload = { name: genre_name.value };
-  const res = await fetch(API, {
+// ================= ADD GENRE =================
+function addGenre() {
+
+  $(".text-danger").remove();
+  let valid = true;
+
+  if ($("#genre_name").val().trim() === "") {
+    $("#genre_name").after("<small class='text-danger'>Genre name is required</small>");
+    valid = false;
+  }
+
+  if (!valid) return;
+
+  const payload = { name: $("#genre_name").val().trim() };
+
+  fetch(API, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: "Bearer " + token
     },
     body: JSON.stringify(payload)
+  }).then(res => {
+    if (!res.ok) {
+      alert("Failed to add genre");
+      return;
+    }
+    bootstrap.Modal.getInstance(addGenreModal).hide();
+    loadGenres();
   });
-  if (!res.ok) return alert("Failed to add genre");
-  bootstrap.Modal.getInstance(addGenreModal).hide();
-  addGenreForm.reset();
-  loadGenres();
 }
 
-// Edit Genre
+// ================= OPEN EDIT =================
 function openEditGenre(g) {
-  edit_genre_id.value = g.id;
-  edit_genre_name.value = g.name;
+  $(".text-danger").remove();
+  $("#edit_genre_id").val(g.id);
+  $("#edit_genre_name").val(g.name);
   new bootstrap.Modal(editGenreModal).show();
 }
 
-async function updateGenre() {
-  const payload = { name: edit_genre_name.value };
-  const res = await fetch(API + edit_genre_id.value + "/", {
+// ================= UPDATE GENRE =================
+function updateGenre() {
+
+  $(".text-danger").remove();
+  let valid = true;
+
+  if ($("#edit_genre_name").val().trim() === "") {
+    $("#edit_genre_name").after("<small class='text-danger'>Genre name is required</small>");
+    valid = false;
+  }
+
+  if (!valid) return;
+
+  const payload = { name: $("#edit_genre_name").val().trim() };
+
+  fetch(API + $("#edit_genre_id").val() + "/", {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
       Authorization: "Bearer " + token
     },
     body: JSON.stringify(payload)
+  }).then(res => {
+    if (!res.ok) {
+      alert("Failed to update genre");
+      return;
+    }
+    bootstrap.Modal.getInstance(editGenreModal).hide();
+    loadGenres();
   });
-  if (!res.ok) return alert("Failed to update genre");
-  bootstrap.Modal.getInstance(editGenreModal).hide();
-  loadGenres();
 }
 
-// Delete Genre
+// ================= DELETE =================
 async function deleteGenre(id) {
   if (!confirm("Delete this genre?")) return;
+
   const res = await fetch(API + id + "/", {
     method: "DELETE",
     headers: { Authorization: "Bearer " + token }
   });
+
   if (!res.ok) return alert("Failed to delete genre");
+
   loadGenres();
 }
 
-// Initial load
 loadGenres();
 </script>
+
 {% endblock %}
